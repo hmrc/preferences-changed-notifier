@@ -1,7 +1,10 @@
 import uk.gov.hmrc.DefaultBuildSettings.integrationTestSettings
 
+val appName: String = "preferences-changed-notifier"
+
 lazy val microservice = Project("preferences-changed-notifier", file("."))
   .enablePlugins(play.sbt.PlayScala, SbtDistributablesPlugin)
+  .disablePlugins(JUnitXmlReportPlugin) //Required to prevent https://github.com/scalatest/scalatest/issues/1427
   .settings(
     majorVersion        := 0,
     scalaVersion        := "2.13.8",
