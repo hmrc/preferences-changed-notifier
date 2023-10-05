@@ -16,7 +16,13 @@
 
 package uk.gov.hmrc.preferenceschangednotifier.repository
 
-import org.mongodb.scala.model.{Filters, IndexModel, IndexOptions, Indexes, ReplaceOptions}
+import org.mongodb.scala.model.{
+  Filters,
+  IndexModel,
+  IndexOptions,
+  Indexes,
+  ReplaceOptions
+}
 import org.mongodb.scala.result
 import play.api.Configuration
 import uk.gov.hmrc.mongo.MongoComponent
@@ -28,28 +34,32 @@ import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class PreferencesChangedRepository @Inject()(mongo: MongoComponent, config: Configuration)(implicit ec: ExecutionContext)
-  extends PlayMongoRepository[PreferencesChanged](
-    mongoComponent = mongo,
-    collectionName = "preferencesChanged",
-    domainFormat = PreferencesChanged.format,
-    indexes =
-      List(
+class PreferencesChangedRepository @Inject()(
+    mongo: MongoComponent,
+    config: Configuration)(implicit ec: ExecutionContext)
+    extends PlayMongoRepository[PreferencesChanged](
+      mongoComponent = mongo,
+      collectionName = "preferencesChanged",
+      domainFormat = PreferencesChanged.format,
+      indexes = List(
         IndexModel(
           Indexes.ascending("preferenceId")
         ),
         IndexModel(
           Indexes.ascending("updatedAt"),
-          IndexOptions().expireAfter(config.get[Long]("preferencesChanged.ttl"), TimeUnit.DAYS)
+          IndexOptions().expireAfter(config.get[Long]("preferencesChanged.ttl"),
+                                     TimeUnit.DAYS)
         )
       )
-  ) {
-  
+    ) {
+
   def replace(item: PreferencesChanged): Future[result.UpdateResult] = {
-    collection.replaceOne(
-      filter = Filters.eq("preferenceId", item.preferenceId),
-      replacement = item,
-      options = ReplaceOptions().upsert(true)
-    ).toFuture()
+    collection
+      .replaceOne(
+        filter = Filters.eq("preferenceId", item.preferenceId),
+        replacement = item,
+        options = ReplaceOptions().upsert(true)
+      )
+      .toFuture()
   }
 }

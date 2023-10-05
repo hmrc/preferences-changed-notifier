@@ -25,14 +25,17 @@ import org.scalatest.matchers.must.Matchers.convertToAnyMustWrapper
 import play.api.Configuration
 import play.api.test.Helpers
 import uk.gov.hmrc.mongo.test.{DefaultPlayMongoRepositorySupport, MongoSupport}
-import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat.{Digital, Paper}
+import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat.{
+  Digital,
+  Paper
+}
 import uk.gov.hmrc.preferenceschangednotifier.model.PreferencesChanged
 
 import java.time.Instant
 import scala.concurrent.ExecutionContext
 
 class PreferencesChangedRepositorySpec
-  extends AnyFreeSpec
+    extends AnyFreeSpec
     with MongoSupport
     with DefaultPlayMongoRepositorySupport[PreferencesChanged]
     with ScalaFutures
@@ -40,12 +43,14 @@ class PreferencesChangedRepositorySpec
     with BeforeAndAfterEach {
   spec =>
 
-  implicit val executionContext: ExecutionContext = Helpers.stubControllerComponents().executionContext
-  val config: Configuration = Configuration(data = ("preferencesChanged.ttl", 14))
+  implicit val executionContext: ExecutionContext =
+    Helpers.stubControllerComponents().executionContext
+  val config: Configuration = Configuration(
+    data = ("preferencesChanged.ttl", 14))
   val repository = new PreferencesChangedRepository(mongoComponent, config)
 
   override protected def checkTtlIndex: Boolean = true
-  
+
   override def beforeEach(): Unit = {
     repository.collection.deleteMany(Filters.empty()).toFuture().futureValue
     super.beforeEach()
@@ -82,7 +87,7 @@ class PreferencesChangedRepositorySpec
         )
       )
       val r1 = repository.collection.insertOne(a).toFuture().futureValue
-      r1.wasAcknowledged() mustEqual(true)
+      r1.wasAcknowledged() mustEqual (true)
 
       val b = PreferencesChanged(
         changedValue = Digital,
@@ -93,12 +98,16 @@ class PreferencesChangedRepositorySpec
         )
       )
       val r2 = repository.replace(item = b).futureValue
-      r2.wasAcknowledged() mustEqual(true)
-      
-      val item = repository.collection.find(
-        filter = Filters.eq("preferenceId", preferenceId)
-      ).toSingle().toFuture().futureValue
-      item.changedValue mustEqual(Digital)
+      r2.wasAcknowledged() mustEqual (true)
+
+      val item = repository.collection
+        .find(
+          filter = Filters.eq("preferenceId", preferenceId)
+        )
+        .toSingle()
+        .toFuture()
+        .futureValue
+      item.changedValue mustEqual (Digital)
     }
   }
 

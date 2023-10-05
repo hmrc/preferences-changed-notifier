@@ -22,27 +22,26 @@ import uk.gov.hmrc.mongo.play.json.formats.MongoFormats
 import uk.gov.hmrc.mongo.play.json.formats.MongoJavatimeFormats
 import java.time.Instant
 
-
 /**
- * PreferencesChanged encapsulates values we want to store in the
- * mongo repository of the same name.
- * Must ensure that instant formatting is consistent with mongo.
- */
-
-case class PreferencesChanged
-(
-  changedValue  : MessageDeliveryFormat,
-  preferenceId  : ObjectId, // INDEX
-  updatedAt     : Instant,
-  taxIds        : Map[String,String]
+  * PreferencesChanged encapsulates values we want to store in the
+  * mongo repository of the same name.
+  * Must ensure that instant formatting is consistent with mongo.
+  */
+case class PreferencesChanged(
+    changedValue: MessageDeliveryFormat,
+    preferenceId: ObjectId, // INDEX
+    updatedAt: Instant,
+    taxIds: Map[String, String]
 )
 
 object PreferencesChanged {
-  implicit val objectIdFormat: Format[ObjectId]    = MongoFormats.objectIdFormat
-  implicit val dtf: Format[Instant]                = MongoJavatimeFormats.instantFormat
-  implicit val mdf: Format[MessageDeliveryFormat]  = MessageDeliveryFormat.format
-  
-  implicit val reads: Reads[PreferencesChanged]    = Json.reads[PreferencesChanged]
-  implicit val writes: OWrites[PreferencesChanged] = Json.writes[PreferencesChanged]
-  implicit val format: OFormat[PreferencesChanged] = Json.format[PreferencesChanged]
+  implicit val objectIdFormat: Format[ObjectId] = MongoFormats.objectIdFormat
+  implicit val dtf: Format[Instant] = MongoJavatimeFormats.instantFormat
+  implicit val mdf: Format[MessageDeliveryFormat] = MessageDeliveryFormat.format
+
+  implicit val reads: Reads[PreferencesChanged] = Json.reads[PreferencesChanged]
+  implicit val writes: OWrites[PreferencesChanged] =
+    Json.writes[PreferencesChanged]
+  implicit val format: OFormat[PreferencesChanged] =
+    Json.format[PreferencesChanged]
 }
