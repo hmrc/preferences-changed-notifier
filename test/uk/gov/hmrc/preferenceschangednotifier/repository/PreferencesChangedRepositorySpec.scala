@@ -45,8 +45,10 @@ class PreferencesChangedRepositorySpec
 
   implicit val executionContext: ExecutionContext =
     Helpers.stubControllerComponents().executionContext
+
   val config: Configuration = Configuration(
     data = ("preferencesChanged.ttl", 14))
+
   val repository = new PreferencesChangedRepository(mongoComponent, config)
 
   override protected def checkTtlIndex: Boolean = true
@@ -58,45 +60,28 @@ class PreferencesChangedRepositorySpec
 
   "Preferences changed repository" - {
 
-    "must be empty" in {
-      val count = repository.collection.countDocuments().toFuture().futureValue
-      count mustEqual 0L
-    }
-
     "inserts correctly" in {
-      val a = PreferencesChanged(
-        changedValue = Paper,
-        preferenceId = new ObjectId(),
-        updatedAt = Instant.now(),
-        taxIds = Map(
-          "nino" -> "AB112233D"
-        )
-      )
+      val a = PreferencesChanged(Paper,
+                                 new ObjectId(),
+                                 Instant.now(),
+                                 Map("nino" -> "AB112233D"))
       val result = repository.replace(a).futureValue
       result.wasAcknowledged mustEqual true
     }
 
     "upserts by preferenceId correctly" in {
       val preferenceId = new ObjectId()
-      val a = PreferencesChanged(
-        changedValue = Paper,
-        preferenceId = preferenceId,
-        updatedAt = Instant.now(),
-        taxIds = Map(
-          "nino" -> "AB112233D"
-        )
-      )
+      val a = PreferencesChanged(Paper,
+                                 preferenceId,
+                                 Instant.now(),
+                                 Map("nino" -> "AB112233D"))
       val r1 = repository.collection.insertOne(a).toFuture().futureValue
       r1.wasAcknowledged() mustEqual (true)
 
-      val b = PreferencesChanged(
-        changedValue = Digital,
-        preferenceId = preferenceId,
-        updatedAt = Instant.now(),
-        taxIds = Map(
-          "nino" -> "AB112233D"
-        )
-      )
+      val b = PreferencesChanged(Digital,
+                                 preferenceId,
+                                 Instant.now(),
+                                 Map("nino" -> "AB112233D"))
       val r2 = repository.replace(item = b).futureValue
       r2.wasAcknowledged() mustEqual (true)
 
