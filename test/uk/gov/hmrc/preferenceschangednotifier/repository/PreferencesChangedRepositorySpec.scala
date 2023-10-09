@@ -26,7 +26,10 @@ import org.scalatest.matchers.must.Matchers.{be, convertToAnyMustWrapper}
 import play.api.Configuration
 import play.api.test.Helpers
 import uk.gov.hmrc.mongo.test.{DefaultPlayMongoRepositorySupport, MongoSupport}
-import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat.{Digital, Paper}
+import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat.{
+  Digital,
+  Paper
+}
 import uk.gov.hmrc.preferenceschangednotifier.model.PreferencesChanged
 
 import java.time.Instant
@@ -38,7 +41,7 @@ class PreferencesChangedRepositorySpec
     with MongoSupport
     with DefaultPlayMongoRepositorySupport[PreferencesChanged]
     with ScalaFutures
-    with IntegrationPatience { this :Suite =>
+    with IntegrationPatience { this: Suite =>
 
   implicit val executionContext: ExecutionContext =
     Helpers.stubControllerComponents().executionContext
@@ -56,9 +59,9 @@ class PreferencesChangedRepositorySpec
     dropDatabase()
     super.beforeEach()
   }
-  
+
   "Preferences changed repository" - {
-    
+
     "test indexes" in {
       val indexes: Seq[model.IndexModel] = repository.indexes
 
@@ -70,7 +73,8 @@ class PreferencesChangedRepositorySpec
       val maybeUpdatedAtIndexModel =
         indexes.find(i => i.getKeys.toBsonDocument.get("updatedAt") != null)
 
-      maybeUpdatedAtIndexModel.get.getOptions.getExpireAfter(TimeUnit.DAYS) must be(14)
+      maybeUpdatedAtIndexModel.get.getOptions
+        .getExpireAfter(TimeUnit.DAYS) must be(14)
     }
 
     "inserts correctly" in {

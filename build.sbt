@@ -19,4 +19,4 @@ lazy val microservice = Project("preferences-changed-notifier", file("."))
   .settings(resolvers += Resolver.jcenterRepo)
   .settings(CodeCoverageSettings.settings: _*)
 
-addCommandAlias("buildall", ";clean;compile;scalafmt;coverage;test;it:test;scalastyle;coverageReport")
+addCommandAlias("buildall", ";clean;compile;scalafmt;test:scalafmt;coverage;test;it:test;scalastyle;coverageReport")

@@ -60,13 +60,15 @@ class PreferencesChangedWorkItemRepositorySpec
       val indexes: Seq[model.IndexModel] = repository.indexes
 
       val maybePreferenceIdIndexModel =
-        indexes.find(i => i.getKeys.toBsonDocument.get("item.preferenceId") != null)
-      
+        indexes.find(i =>
+          i.getKeys.toBsonDocument.get("item.preferenceId") != null)
+
       maybePreferenceIdIndexModel.get.getOptions.isUnique must be(false)
       maybePreferenceIdIndexModel.get.getOptions.isBackground must be(true)
-      
+
       val maybeSubscriberIndexModel =
-        indexes.find(i => i.getKeys.toBsonDocument.get("item.subscriber") != null)
+        indexes.find(i =>
+          i.getKeys.toBsonDocument.get("item.subscriber") != null)
 
       maybeSubscriberIndexModel.get.getOptions.isUnique must be(false)
       maybeSubscriberIndexModel.get.getOptions.isBackground must be(true)
