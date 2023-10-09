@@ -12,9 +12,7 @@ lazy val microservice = Project("preferences-changed-notifier", file("."))
     libraryDependencies ++= AppDependencies.compile ++ AppDependencies.test,
     // https://www.scala-lang.org/2021/01/12/configuring-and-suppressing-warnings.html
     // suppress warnings in generated routes files
-    scalacOptions += "-Wconf:src=routes/.*:s",
-    Compile / scalafmtOnCompile := true,
-    Test / scalafmtOnCompile := true
+    scalacOptions += "-Wconf:src=routes/.*:s"
   )
   .configs(IntegrationTest)
   .settings(integrationTestSettings(): _*)

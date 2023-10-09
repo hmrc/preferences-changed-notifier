@@ -17,21 +17,20 @@
 package uk.gov.hmrc.preferenceschangednotifier.repository
 
 import org.mongodb.scala.bson.ObjectId
+import org.mongodb.scala.model
 import org.mongodb.scala.model.Filters
-import org.scalatest.BeforeAndAfterEach
+import org.scalatest.Suite
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.must.Matchers.convertToAnyMustWrapper
+import org.scalatest.matchers.must.Matchers.{be, convertToAnyMustWrapper}
 import play.api.Configuration
 import play.api.test.Helpers
 import uk.gov.hmrc.mongo.test.{DefaultPlayMongoRepositorySupport, MongoSupport}
-import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat.{
-  Digital,
-  Paper
-}
+import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat.{Digital, Paper}
 import uk.gov.hmrc.preferenceschangednotifier.model.PreferencesChanged
 
 import java.time.Instant
+import java.util.concurrent.TimeUnit
 import scala.concurrent.ExecutionContext
 
 class PreferencesChangedRepositorySpec
@@ -39,9 +38,7 @@ class PreferencesChangedRepositorySpec
     with MongoSupport
     with DefaultPlayMongoRepositorySupport[PreferencesChanged]
     with ScalaFutures
-    with IntegrationPatience
-    with BeforeAndAfterEach {
-  spec =>
+    with IntegrationPatience { this :Suite =>
 
   implicit val executionContext: ExecutionContext =
     Helpers.stubControllerComponents().executionContext
@@ -53,12 +50,28 @@ class PreferencesChangedRepositorySpec
 
   override protected def checkTtlIndex: Boolean = true
 
-  override def beforeEach(): Unit = {
+  override protected def beforeEach(): Unit = {
     repository.collection.deleteMany(Filters.empty()).toFuture().futureValue
+    dropCollection()
+    dropDatabase()
     super.beforeEach()
   }
-
+  
   "Preferences changed repository" - {
+    
+    "test indexes" in {
+      val indexes: Seq[model.IndexModel] = repository.indexes
+
+      val maybePreferenceIdIndexModel =
+        indexes.find(i => i.getKeys.toBsonDocument.get("preferenceId") != null)
+
+      maybePreferenceIdIndexModel.get.getOptions.isUnique must be(true)
+
+      val maybeUpdatedAtIndexModel =
+        indexes.find(i => i.getKeys.toBsonDocument.get("updatedAt") != null)
+
+      maybeUpdatedAtIndexModel.get.getOptions.getExpireAfter(TimeUnit.DAYS) must be(14)
+    }
 
     "inserts correctly" in {
       val a = PreferencesChanged(Paper,

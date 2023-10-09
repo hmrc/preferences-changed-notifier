@@ -17,11 +17,11 @@
 package uk.gov.hmrc.preferenceschangednotifier.repository
 
 import org.mongodb.scala.bson.ObjectId
+import org.mongodb.scala.model
 import org.mongodb.scala.model.Filters
-import org.scalatest.BeforeAndAfterEach
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.must.Matchers.convertToAnyMustWrapper
+import org.scalatest.matchers.must.Matchers.{be, convertToAnyMustWrapper}
 import play.api.Configuration
 import play.api.test.Helpers
 import uk.gov.hmrc.mongo.test.{DefaultPlayMongoRepositorySupport, MongoSupport}
@@ -36,8 +36,7 @@ class PreferencesChangedWorkItemRepositorySpec
     with MongoSupport
     with DefaultPlayMongoRepositorySupport[WorkItem[PreferencesChangedRef]]
     with ScalaFutures
-    with IntegrationPatience
-    with BeforeAndAfterEach {
+    with IntegrationPatience {
   spec =>
 
   implicit val executionContext: ExecutionContext =
@@ -57,6 +56,22 @@ class PreferencesChangedWorkItemRepositorySpec
   }
 
   "Preferences changed repository" - {
+    "test indexes" in {
+      val indexes: Seq[model.IndexModel] = repository.indexes
+
+      val maybePreferenceIdIndexModel =
+        indexes.find(i => i.getKeys.toBsonDocument.get("item.preferenceId") != null)
+      
+      maybePreferenceIdIndexModel.get.getOptions.isUnique must be(false)
+      maybePreferenceIdIndexModel.get.getOptions.isBackground must be(true)
+      
+      val maybeSubscriberIndexModel =
+        indexes.find(i => i.getKeys.toBsonDocument.get("item.subscriber") != null)
+
+      maybeSubscriberIndexModel.get.getOptions.isUnique must be(false)
+      maybeSubscriberIndexModel.get.getOptions.isBackground must be(true)
+
+    }
 
     "pushes new workitem correctly" in {
       val a = PreferencesChangedRef(new ObjectId(),
