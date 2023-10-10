@@ -43,7 +43,8 @@ class PreferencesChangedRepository @Inject()(
       domainFormat = PreferencesChanged.format,
       indexes = List(
         IndexModel(
-          Indexes.ascending("preferenceId")
+          Indexes.ascending("preferenceId"),
+          IndexOptions().unique(true)
         ),
         IndexModel(
           Indexes.ascending("updatedAt"),

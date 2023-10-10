@@ -17,11 +17,12 @@
 package uk.gov.hmrc.preferenceschangednotifier.repository
 
 import org.mongodb.scala.bson.ObjectId
+import org.mongodb.scala.model
 import org.mongodb.scala.model.Filters
-import org.scalatest.BeforeAndAfterEach
+import org.scalatest.Suite
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.must.Matchers.convertToAnyMustWrapper
+import org.scalatest.matchers.must.Matchers.{be, convertToAnyMustWrapper}
 import play.api.Configuration
 import play.api.test.Helpers
 import uk.gov.hmrc.mongo.test.{DefaultPlayMongoRepositorySupport, MongoSupport}
@@ -32,6 +33,7 @@ import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat.{
 import uk.gov.hmrc.preferenceschangednotifier.model.PreferencesChanged
 
 import java.time.Instant
+import java.util.concurrent.TimeUnit
 import scala.concurrent.ExecutionContext
 
 class PreferencesChangedRepositorySpec
@@ -39,64 +41,64 @@ class PreferencesChangedRepositorySpec
     with MongoSupport
     with DefaultPlayMongoRepositorySupport[PreferencesChanged]
     with ScalaFutures
-    with IntegrationPatience
-    with BeforeAndAfterEach {
-  spec =>
+    with IntegrationPatience { this: Suite =>
 
   implicit val executionContext: ExecutionContext =
     Helpers.stubControllerComponents().executionContext
+
   val config: Configuration = Configuration(
     data = ("preferencesChanged.ttl", 14))
+
   val repository = new PreferencesChangedRepository(mongoComponent, config)
 
   override protected def checkTtlIndex: Boolean = true
 
-  override def beforeEach(): Unit = {
+  override protected def beforeEach(): Unit = {
     repository.collection.deleteMany(Filters.empty()).toFuture().futureValue
+    dropCollection()
+    dropDatabase()
     super.beforeEach()
   }
 
   "Preferences changed repository" - {
 
-    "must be empty" in {
-      val count = repository.collection.countDocuments().toFuture().futureValue
-      count mustEqual 0L
+    "test indexes" in {
+      val indexes: Seq[model.IndexModel] = repository.indexes
+
+      val maybePreferenceIdIndexModel =
+        indexes.find(i => i.getKeys.toBsonDocument.get("preferenceId") != null)
+
+      maybePreferenceIdIndexModel.get.getOptions.isUnique must be(true)
+
+      val maybeUpdatedAtIndexModel =
+        indexes.find(i => i.getKeys.toBsonDocument.get("updatedAt") != null)
+
+      maybeUpdatedAtIndexModel.get.getOptions
+        .getExpireAfter(TimeUnit.DAYS) must be(14)
     }
 
     "inserts correctly" in {
-      val a = PreferencesChanged(
-        changedValue = Paper,
-        preferenceId = new ObjectId(),
-        updatedAt = Instant.now(),
-        taxIds = Map(
-          "nino" -> "AB112233D"
-        )
-      )
+      val a = PreferencesChanged(Paper,
+                                 new ObjectId(),
+                                 Instant.now(),
+                                 Map("nino" -> "AB112233D"))
       val result = repository.replace(a).futureValue
       result.wasAcknowledged mustEqual true
     }
 
     "upserts by preferenceId correctly" in {
       val preferenceId = new ObjectId()
-      val a = PreferencesChanged(
-        changedValue = Paper,
-        preferenceId = preferenceId,
-        updatedAt = Instant.now(),
-        taxIds = Map(
-          "nino" -> "AB112233D"
-        )
-      )
+      val a = PreferencesChanged(Paper,
+                                 preferenceId,
+                                 Instant.now(),
+                                 Map("nino" -> "AB112233D"))
       val r1 = repository.collection.insertOne(a).toFuture().futureValue
       r1.wasAcknowledged() mustEqual (true)
 
-      val b = PreferencesChanged(
-        changedValue = Digital,
-        preferenceId = preferenceId,
-        updatedAt = Instant.now(),
-        taxIds = Map(
-          "nino" -> "AB112233D"
-        )
-      )
+      val b = PreferencesChanged(Digital,
+                                 preferenceId,
+                                 Instant.now(),
+                                 Map("nino" -> "AB112233D"))
       val r2 = repository.replace(item = b).futureValue
       r2.wasAcknowledged() mustEqual (true)
 
