@@ -14,18 +14,24 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.preferenceschangednotifier.controllers
+package uk.gov.hmrc.preferenceschangednotifier.controllers.model
 
-import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
-import play.api.mvc.{Action, AnyContent, ControllerComponents}
-import javax.inject.{Inject, Singleton}
-import scala.concurrent.Future
+import play.api.libs.json.{JsSuccess, JsError, JsString, Reads}
 
-@Singleton()
-class MicroserviceHelloWorldController @Inject()(cc: ControllerComponents)
-    extends BackendController(cc) {
+import java.time.Instant
+import scala.util.Try
 
-  def hello(): Action[AnyContent] = Action.async { implicit request =>
-    Future.successful(Ok("Hello world"))
+object RestInstantFormat {
+  implicit val reads: Reads[Instant] = restInstantReads
+
+  private lazy val restInstantReads: Reads[Instant] = {
+    case JsString(s) =>
+      Try(Instant.parse(s))
+        .fold(
+          _ => JsError(s"Could not parse $s as an ISO Instant"),
+          JsSuccess.apply(_)
+        )
+    case json =>
+      JsError(s"Expected value to be a string, was actually $json")
   }
 }

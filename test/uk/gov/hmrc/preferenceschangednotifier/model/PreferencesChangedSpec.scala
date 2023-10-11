@@ -18,8 +18,14 @@ package uk.gov.hmrc.preferenceschangednotifier.model
 
 import org.scalatest.freespec.AnyFreeSpec
 import org.mongodb.scala.bson.ObjectId
-import org.scalatest.matchers.must.Matchers.convertToAnyMustWrapper
+import org.scalatest.matchers.must.Matchers.{
+  convertToAnyMustWrapper,
+  equal,
+  have,
+  the
+}
 import play.api.libs.json.JsObject
+import uk.gov.hmrc.preferenceschangednotifier.controllers.model.PreferencesChangedRequest
 import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat.Paper
 
 import java.time.Instant
@@ -104,4 +110,44 @@ class PreferencesChangedSpec extends AnyFreeSpec {
       taxIds mustEqual Map("nino" -> "AB112233D", "sautr" -> "sautr1")
     }
   }
+
+  "convert from PreferencesChangedRequest" - {
+
+    "check preferenceId" in {
+      val pid = new ObjectId()
+      val req = PreferencesChangedRequest(
+        changedValue = Paper,
+        preferenceId = pid.toString,
+        updatedAt = Instant.now(),
+        taxIds = Map.empty
+      )
+      val a = PreferencesChanged.from(req)
+      a.preferenceId mustEqual (new ObjectId(req.preferenceId))
+    }
+
+    "check invalid preferenceId" in {
+      val req = PreferencesChangedRequest(
+        changedValue = Paper,
+        preferenceId = "111",
+        updatedAt = Instant.now(),
+        taxIds = Map.empty
+      )
+
+      the[IllegalArgumentException] thrownBy {
+        PreferencesChanged.from(req)
+      } must have message "invalid hexadecimal representation of an ObjectId: [111]"
+    }
+
+    "check taxIds" in {
+      val req = PreferencesChangedRequest(
+        changedValue = Paper,
+        preferenceId = new ObjectId().toString,
+        updatedAt = Instant.now(),
+        taxIds = Map("taxId1" -> "1234")
+      )
+      val a = PreferencesChanged.from(req)
+      a.taxIds must equal(Map("taxId1" -> "1234"))
+    }
+  }
+
 }

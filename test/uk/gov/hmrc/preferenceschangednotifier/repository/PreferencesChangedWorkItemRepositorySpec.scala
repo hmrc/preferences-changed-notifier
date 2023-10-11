@@ -148,6 +148,24 @@ class PreferencesChangedWorkItemRepositorySpec
       repository.collection.countDocuments().toFuture().futureValue mustBe (2)
     }
 
+    "push duplicate items in todo state" in {
+      val prefId = new ObjectId()
+      val prefChangedId = new ObjectId()
+
+      val a =
+        PreferencesChangedRef(prefChangedId, prefId, "https://localhost:1234")
+      val b =
+        PreferencesChangedRef(prefChangedId, prefId, "https://localhost:1234")
+
+      val wi1 = repository.pushUpdated(a).futureValue
+      val wi2 = repository.pushUpdated(b).futureValue // updates existing workitem
+
+      wi1.item.preferenceId mustEqual (wi2.item.preferenceId)
+      wi1.item.preferenceChangedId mustEqual (wi2.item.preferenceChangedId)
+      wi1.item.subscriber mustEqual (wi2.item.subscriber)
+      wi1.status mustEqual (wi2.status)
+    }
+
   }
 
 }
