@@ -20,6 +20,8 @@ import org.mongodb.scala.bson.ObjectId
 import play.api.libs.json.{Format, Json, OFormat, OWrites, Reads}
 import uk.gov.hmrc.mongo.play.json.formats.MongoFormats
 import uk.gov.hmrc.mongo.play.json.formats.MongoJavatimeFormats
+import uk.gov.hmrc.preferenceschangednotifier.controllers.model.PreferencesChangedRequest
+
 import java.time.Instant
 
 /**
@@ -35,6 +37,15 @@ case class PreferencesChanged(
 )
 
 object PreferencesChanged {
+
+  // Create a mongo type from the rest request
+  def from(pcRequest: PreferencesChangedRequest): PreferencesChanged = {
+    PreferencesChanged(changedValue = pcRequest.changedValue,
+                       preferenceId = new ObjectId(pcRequest.preferenceId),
+                       updatedAt = pcRequest.updatedAt,
+                       taxIds = pcRequest.taxIds)
+  }
+
   implicit val objectIdFormat: Format[ObjectId] = MongoFormats.objectIdFormat
   implicit val dtf: Format[Instant] = MongoJavatimeFormats.instantFormat
   implicit val mdf: Format[MessageDeliveryFormat] = MessageDeliveryFormat.format

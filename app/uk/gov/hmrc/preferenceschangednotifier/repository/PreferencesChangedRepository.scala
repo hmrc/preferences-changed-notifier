@@ -24,7 +24,7 @@ import org.mongodb.scala.model.{
   ReplaceOptions
 }
 import org.mongodb.scala.result
-import play.api.Configuration
+import play.api.{Configuration, Logger}
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
 import uk.gov.hmrc.preferenceschangednotifier.model.PreferencesChanged
@@ -54,6 +54,8 @@ class PreferencesChangedRepository @Inject()(
       )
     ) {
 
+  private val logger: Logger = Logger(getClass)
+
   def replace(item: PreferencesChanged): Future[result.UpdateResult] = {
     collection
       .replaceOne(
@@ -62,5 +64,9 @@ class PreferencesChangedRepository @Inject()(
         options = ReplaceOptions().upsert(true)
       )
       .toFuture()
+      .recover { ex =>
+        logger.error(s"Recover during replace $ex")
+        throw ex
+      }
   }
 }

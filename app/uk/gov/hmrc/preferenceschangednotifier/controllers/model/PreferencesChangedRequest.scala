@@ -14,18 +14,22 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.preferenceschangednotifier.controllers
+package uk.gov.hmrc.preferenceschangednotifier.controllers.model
 
-import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
-import play.api.mvc.{Action, AnyContent, ControllerComponents}
-import javax.inject.{Inject, Singleton}
-import scala.concurrent.Future
+import play.api.libs.json.Json
+import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat
 
-@Singleton()
-class MicroserviceHelloWorldController @Inject()(cc: ControllerComponents)
-    extends BackendController(cc) {
+import java.time.Instant
 
-  def hello(): Action[AnyContent] = Action.async { implicit request =>
-    Future.successful(Ok("Hello world"))
-  }
+case class PreferencesChangedRequest(
+    changedValue: MessageDeliveryFormat,
+    preferenceId: String,
+    updatedAt: Instant,
+    taxIds: Map[String, String]
+)
+
+object PreferencesChangedRequest {
+  implicit val mdFormat = MessageDeliveryFormat.format
+  implicit val dateTimeFormat = RestInstantFormat.format
+  implicit val format = Json.format[PreferencesChangedRequest]
 }
