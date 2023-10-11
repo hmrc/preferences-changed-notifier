@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.preferenceschangednotifier.controllers
 
-import play.api.libs.json.{JsValue, OFormat}
+import play.api.libs.json.{JsValue, Reads}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import play.api.mvc.{Action, ControllerComponents}
 import uk.gov.hmrc.preferenceschangednotifier.controllers.model.PreferencesChangedRequest
@@ -37,8 +37,8 @@ class PreferencesChangedController @Inject()(
 )(implicit val ec: ExecutionContext)
     extends BackendController(cc) {
 
-  implicit val pcr: OFormat[PreferencesChangedRequest] =
-    PreferencesChangedRequest.format
+  implicit val pcr: Reads[PreferencesChangedRequest] =
+    PreferencesChangedRequest.reads
 
   def preferencesChanged(): Action[JsValue] = Action.async(parse.json) {
     implicit request =>
@@ -47,10 +47,9 @@ class PreferencesChangedController @Inject()(
           .preferenceChanged(body)
           .fold(
             {
-              case RequestError(m)     => BadRequest(m)
-              case PersistenceError(m) => InternalServerError(m)
-              case ServerError(m)      => InternalServerError(m)
-//              case _                   => InternalServerError
+              case RequestError(r)     => BadRequest(r)
+              case PersistenceError(p) => InternalServerError(p)
+              case ServerError(s)      => InternalServerError(s)
             },
             _ => Ok
           )

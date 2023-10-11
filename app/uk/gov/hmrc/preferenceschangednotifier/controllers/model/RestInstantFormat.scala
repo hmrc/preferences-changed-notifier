@@ -16,49 +16,22 @@
 
 package uk.gov.hmrc.preferenceschangednotifier.controllers.model
 
-import play.api.libs.json.{
-  Format,
-  JsSuccess,
-  JsError,
-  JsResult,
-  JsValue,
-  JsString,
-  Reads,
-  Writes
-}
+import play.api.libs.json.{JsSuccess, JsError, JsString, Reads}
 
 import java.time.Instant
 import scala.util.Try
 
 object RestInstantFormat {
-  implicit val format = Format(restInstantReads, restInstantWrites)
+  implicit val reads: Reads[Instant] = restInstantReads
 
-  private lazy val restInstantReads: Reads[Instant] =
-    new Reads[Instant] {
-      override def reads(json: JsValue): JsResult[Instant] = {
-        json match {
-          case JsString(s) =>
-            Try(Instant.parse(s))
-              .fold(
-                _ => JsError(s"Could not parse $s as an ISO Instant"),
-                JsSuccess.apply(_)
-              )
-          case _ =>
-            JsError(s"Expected value to be a string, was actually $json")
-        }
-      }
-    }
-
-  private lazy val restInstantWrites: Writes[Instant] =
-    new Writes[Instant] {
-      private val restDateTimeFormat =
-        // preserving millis which Instant.toString doesn't when 000
-        java.time.format.DateTimeFormatter
-          .ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
-          .withZone(java.time.ZoneOffset.UTC)
-
-      def writes(instant: Instant): JsValue =
-        JsString(restDateTimeFormat.format(instant))
-    }
-
+  private lazy val restInstantReads: Reads[Instant] = {
+    case JsString(s) =>
+      Try(Instant.parse(s))
+        .fold(
+          _ => JsError(s"Could not parse $s as an ISO Instant"),
+          JsSuccess.apply(_)
+        )
+    case json =>
+      JsError(s"Expected value to be a string, was actually $json")
+  }
 }

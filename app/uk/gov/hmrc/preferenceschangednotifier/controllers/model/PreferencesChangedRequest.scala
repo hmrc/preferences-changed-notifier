@@ -30,6 +30,6 @@ case class PreferencesChangedRequest(
 
 object PreferencesChangedRequest {
   implicit val mdFormat = MessageDeliveryFormat.format
-  implicit val dateTimeFormat = RestInstantFormat.format
-  implicit val format = Json.format[PreferencesChangedRequest]
+  implicit val dateTimeFormat = RestInstantFormat.reads
+  implicit val reads = Json.reads[PreferencesChangedRequest]
 }

@@ -16,9 +16,9 @@
 
 package uk.gov.hmrc.preferenceschangednotifier.controllers.model
 
-import org.mongodb.scala.bson.ObjectId
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers.{convertToAnyMustWrapper, equal}
+import play.api.libs.json.Json
 import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat.Paper
 
 import java.time.Instant
@@ -26,65 +26,46 @@ import java.time.Instant
 class PreferencesChangedRequestSpec extends AnyFreeSpec {
   spec =>
 
-  "Preferences changed request json writes" - {
+  "Preferences changed request json reads" - {
 
-    "MessageDeliveryFormat format correctly" in {
-      val a = PreferencesChangedRequest(Paper,
-                                        new ObjectId().toString,
-                                        Instant.now(),
-                                        taxIds = Map("nino" -> "AB112233D"))
-
-      val writer = PreferencesChangedRequest.format
-      val json = writer.writes(a)
-
-      (json \ "changedValue").as[String] mustEqual (Paper.name)
+    "MessageDeliveryFormat correctly" in {
+      val pcr: PreferencesChangedRequest = createPcr
+      pcr.changedValue mustEqual Paper
     }
 
-    "instant format correctly" in {
-      val dateStr = "2023-10-12T09:30:00.000Z"
-      val now = Instant.parse(dateStr)
-      val a = PreferencesChangedRequest(Paper,
-                                        new ObjectId().toString,
-                                        now,
-                                        taxIds = Map("nino" -> "AB112233D"))
-
-      val writer = PreferencesChangedRequest.format
-      val json = writer.writes(a)
-
-      val dateResult = (json \ "updatedAt").as[String]
-
-      dateResult must equal(dateStr)
+    "instant correctly" in {
+      val pcr: PreferencesChangedRequest = createPcr
+      pcr.updatedAt must equal(Instant.parse("2023-10-11T01:30:00.000Z"))
     }
 
     "preferenceId format correctly" in {
-      val preferenceId = new ObjectId().toString
-      val a = PreferencesChangedRequest(
-        changedValue = Paper,
-        preferenceId = preferenceId,
-        updatedAt = Instant.now(),
-        taxIds = Map("nino" -> "AB112233D")
-      )
-
-      val writer = PreferencesChangedRequest.format
-      val json = writer.writes(a)
-
-      val result = (json \ "preferenceId").as[String]
-      result mustEqual preferenceId.toString
+      val pcr: PreferencesChangedRequest = createPcr
+      pcr.preferenceId mustEqual "65263df8d843592d74a2bfc6"
     }
 
     "taxIds format correctly" in {
-      val a = PreferencesChangedRequest(
-        changedValue = Paper,
-        preferenceId = new ObjectId().toString,
-        updatedAt = Instant.now(),
-        taxIds = Map("nino" -> "AB112233D", "sautr" -> "sautr1")
-      )
-
-      val writer = PreferencesChangedRequest.format
-      val json = writer.writes(a)
-
-      val taxIds = (json \ "taxIds").as[Map[String, String]]
-      taxIds mustEqual Map("nino" -> "AB112233D", "sautr" -> "sautr1")
+      val pcr: PreferencesChangedRequest = createPcr
+      pcr.taxIds mustEqual Map("nino" -> "AB112233C")
     }
+  }
+
+  private def createPcr = {
+    val reader = PreferencesChangedRequest.reads
+    reader.reads(createJson()).get
+  }
+
+  private def createJson(
+      changedValue: String = "paper",
+      preferenceId: String = "65263df8d843592d74a2bfc6",
+      updatedAt: String = "2023-10-11T01:30:00.000Z",
+      taxIds: String = """ { "nino" : "AB112233C" }"""
+  ) = {
+    Json.parse(s"""{
+        |  "changedValue" : "$changedValue",
+        |  "preferenceId" : "$preferenceId",
+        |  "updatedAt"    : "$updatedAt",
+        |  "taxIds"       :  $taxIds
+        |}
+        |""".stripMargin)
   }
 }
