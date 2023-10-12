@@ -42,7 +42,6 @@ class EpsHodsAdaptorConnectorSpec
     with IntegrationPatience
     with BeforeAndAfterEach {
 
-//  override implicit lazy val app: Application = GuiceApplicationBuilder()
   override def fakeApplication(): Application =
     GuiceApplicationBuilder().configure("metrics.enabled" -> false).build()
 
