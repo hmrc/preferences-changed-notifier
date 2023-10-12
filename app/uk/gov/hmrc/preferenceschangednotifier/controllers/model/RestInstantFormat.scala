@@ -16,13 +16,14 @@
 
 package uk.gov.hmrc.preferenceschangednotifier.controllers.model
 
-import play.api.libs.json.{JsSuccess, JsError, JsString, Reads}
+import play.api.libs.json.{JsError, JsString, JsSuccess, JsValue, Reads, Writes}
 
 import java.time.Instant
 import scala.util.Try
 
 object RestInstantFormat {
   implicit val reads: Reads[Instant] = restInstantReads
+  implicit val writes: Writes[Instant] = restInstantWrites
 
   private lazy val restInstantReads: Reads[Instant] = {
     case JsString(s) =>
@@ -34,4 +35,17 @@ object RestInstantFormat {
     case json =>
       JsError(s"Expected value to be a string, was actually $json")
   }
+
+  private lazy val restInstantWrites: Writes[Instant] =
+    new Writes[Instant] {
+      private val formatter =
+        // preserving millis which Instant.toString doesn't when 000
+        java.time.format.DateTimeFormatter
+          .ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+          .withZone(java.time.ZoneOffset.UTC)
+
+      def writes(instant: Instant): JsValue =
+        JsString(formatter.format(instant))
+    }
+
 }
