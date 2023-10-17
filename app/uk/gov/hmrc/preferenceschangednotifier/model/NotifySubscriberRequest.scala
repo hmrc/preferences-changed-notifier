@@ -28,6 +28,9 @@ case class NotifySubscriberRequest(
 )
 
 object NotifySubscriberRequest {
+  def apply(pc: PreferencesChanged): NotifySubscriberRequest =
+    NotifySubscriberRequest(pc.changedValue, pc.updatedAt, pc.taxIds)
+
   private implicit val dtf: Writes[Instant] =
     RestInstantFormat.writes
   private implicit val mdf: Writes[MessageDeliveryFormat] =

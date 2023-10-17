@@ -18,37 +18,74 @@ package uk.gov.hmrc.preferenceschangednotifier.service
 
 import cats.data.EitherT
 import org.bson.types.ObjectId
-import play.api.Logger
+import org.mongodb.scala.model.Filters
+import play.api.Logging
+import uk.gov.hmrc.mongo.workitem.{ResultStatus, WorkItem}
 import uk.gov.hmrc.preferenceschangednotifier.controllers.model.PreferencesChangedRequest
 import uk.gov.hmrc.preferenceschangednotifier.model.{
   ErrorResponse,
   PersistenceError,
-  RequestError,
   PreferencesChanged,
-  PreferencesChangedRef
+  PreferencesChangedRef,
+  RequestError
 }
 import uk.gov.hmrc.preferenceschangednotifier.repository.{
   PreferencesChangedRepository,
   PreferencesChangedWorkItemRepository
 }
+import uk.gov.hmrc.preferenceschangednotifier.scheduling.Result
 
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 import javax.inject.{Inject, Singleton}
+import scala.concurrent.duration.Duration
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
+
 @Singleton
 class PreferencesChangedService @Inject()(
     pcRepo: PreferencesChangedRepository,
     pcWorkItemRepo: PreferencesChangedWorkItemRepository
-)(implicit val ec: ExecutionContext) {
+)(implicit val ec: ExecutionContext)
+    extends Logging {
+  def completeAndDelete(
+      workItem: WorkItem[PreferencesChangedRef]): Future[Result] =
+    pcWorkItemRepo.completeAndDelete(workItem.id).map {
+      case true => Result(s"Completed workitem: ${workItem.id} successfully")
+      case false =>
+        Result(s"Failed to completeAndDelete workitem: ${workItem.id}")
+    }
 
-  private val logger: Logger = Logger(getClass)
+  def completeWithStatus(workItem: WorkItem[PreferencesChangedRef],
+                         status: ResultStatus): Future[Result] =
+    pcWorkItemRepo.complete(workItem.id, status).map {
+      case true =>
+        Result(
+          s"Completed workitem: ${workItem.id} with status: $status successfully")
+      case false =>
+        Result(
+          s"Failed to complete workitem: ${workItem.id} with status: $status")
+    }
+
+  def find(preferenceChangedId: ObjectId): Future[Option[PreferencesChanged]] =
+    pcRepo.collection
+      .find(Filters.eq("_id", preferenceChangedId))
+      .toSingle()
+      .toFutureOption()
+
+  def pull(retryFailedAfter: Duration)
+    : Future[Option[WorkItem[PreferencesChangedRef]]] =
+    pcWorkItemRepo.pullOutstanding(
+      Instant.now().minus(retryFailedAfter.toSeconds, ChronoUnit.SECONDS),
+      Instant.now()
+    )
 
   def preferenceChanged(pcRequest: PreferencesChangedRequest)
     : EitherT[Future, ErrorResponse, Unit] = {
     for {
       id <- EitherT(addPreferenceChanged(pcRequest))
-      b <- EitherT(addPreferenceChangedWorkItems(id, pcRequest))
-    } yield b
+      unit <- EitherT(addPreferenceChangedWorkItems(id, pcRequest))
+    } yield unit
 
   }
 
@@ -91,13 +128,13 @@ class PreferencesChangedService @Inject()(
   private def addPreferenceChangedWorkItems(
       id: ObjectId,
       pc: PreferencesChangedRequest): Future[Either[ErrorResponse, Unit]] = {
+
     Try {
-      val sub1Pref = PreferencesChangedRef(
-                                           // TODO: Config for subscriber
-                                           id,
+      val sub1Pref = PreferencesChangedRef(id,
                                            new ObjectId(pc.preferenceId),
+                                           // TODO: Add multiple subscribers by name from config
                                            subscriber =
-                                             "https://eps-hods-adapter:XXXX")
+                                             "EpsHodsAdapterConnector")
 
       val _ = pcWorkItemRepo.pushUpdated(sub1Pref)
     } match {

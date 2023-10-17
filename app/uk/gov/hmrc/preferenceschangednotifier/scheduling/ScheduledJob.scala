@@ -14,24 +14,12 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.preferenceschangednotifier.config
+package uk.gov.hmrc.preferenceschangednotifier.scheduling
 
-import com.google.inject.{AbstractModule, Provides, Singleton}
-import uk.gov.hmrc.preferenceschangednotifier.connectors.{
-  EpsHodsAdapterConnector,
-  Subscriber
+import scala.concurrent.{ExecutionContext, Future}
+
+trait ScheduledJob extends SchedulingConfig {
+
+  val name: String
+  def execute(implicit ec: ExecutionContext): Future[Result]
 }
-
-// $COVERAGE-OFF$Nothing to see here
-class Module extends AbstractModule {
-
-  override def configure(): Unit = {
-    bind(classOf[AppConfig]).asEagerSingleton()
-  }
-  @Provides
-  @Singleton
-  def subscribers(
-      epsHodsAdapterConnector: EpsHodsAdapterConnector
-  ): Seq[Subscriber] = Seq(epsHodsAdapterConnector)
-}
-// $COVERAGE-ON$

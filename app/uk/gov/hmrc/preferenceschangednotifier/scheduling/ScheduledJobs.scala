@@ -14,12 +14,6 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.preferenceschangednotifier.model
+package uk.gov.hmrc.preferenceschangednotifier.scheduling
 
-import uk.gov.hmrc.http.HttpResponse
-
-import scala.concurrent.Future
-
-trait Subscriber {
-  def notifySubscriber(request: NotifySubscriberRequest): Future[HttpResponse]
-}
+case class ScheduledJobs(jobs: Iterable[ScheduledJob])

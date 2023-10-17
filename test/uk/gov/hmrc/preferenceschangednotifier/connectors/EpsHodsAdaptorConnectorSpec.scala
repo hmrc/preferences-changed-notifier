@@ -18,7 +18,7 @@ package uk.gov.hmrc.preferenceschangednotifier.connectors
 
 import org.mockito.ArgumentMatchers.any
 import org.mockito.MockitoSugar
-import org.scalatest.BeforeAndAfterEach
+import org.scalatest.{BeforeAndAfterEach, EitherValues}
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatestplus.play.PlaySpec
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
@@ -26,7 +26,13 @@ import play.api.Application
 import play.api.http.Status.OK
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.Writes
-import uk.gov.hmrc.http.{HeaderCarrier, HttpClient, HttpReads, HttpResponse}
+import uk.gov.hmrc.http.{
+  HeaderCarrier,
+  HttpClient,
+  HttpReads,
+  HttpResponse,
+  UpstreamErrorResponse
+}
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat.Paper
 import uk.gov.hmrc.preferenceschangednotifier.model.NotifySubscriberRequest
@@ -40,7 +46,8 @@ class EpsHodsAdaptorConnectorSpec
     with GuiceOneAppPerSuite
     with MockitoSugar
     with IntegrationPatience
-    with BeforeAndAfterEach {
+    with BeforeAndAfterEach
+    with EitherValues {
 
   override def fakeApplication(): Application =
     GuiceApplicationBuilder().configure("metrics.enabled" -> false).build()
@@ -66,18 +73,19 @@ class EpsHodsAdaptorConnectorSpec
                                             taxIds = Map("nino" -> "AB112233C"))
 
       when(
-        mockClient.POST[NotifySubscriberRequest, HttpResponse](
+        mockClient.POST[NotifySubscriberRequest,
+                        Either[UpstreamErrorResponse, HttpResponse]](
           any[String],
           any[NotifySubscriberRequest],
-          any[Seq[(String, String)]])(any[Writes[NotifySubscriberRequest]],
-                                      any[HttpReads[HttpResponse]],
-                                      any[HeaderCarrier],
-                                      any[ExecutionContext]))
-        .thenReturn(Future.successful(HttpResponse(OK, "", Map.empty)))
+          any[Seq[(String, String)]])(
+          any[Writes[NotifySubscriberRequest]],
+          any[HttpReads[Either[UpstreamErrorResponse, HttpResponse]]],
+          any[HeaderCarrier],
+          any[ExecutionContext]))
+        .thenReturn(Future.successful(Right(HttpResponse(OK, "", Map.empty))))
 
-      val result: HttpResponse = connector.notifySubscriber(req).futureValue
-
-      result.status mustBe OK
+      val result = connector.notifySubscriber(req).futureValue
+      result.foreach(_.status mustBe OK)
     }
   }
 

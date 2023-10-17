@@ -66,10 +66,14 @@ class PreferencesChangedWorkItemRepository @Inject()(
       replaceIndexes = false
     ) {
 
+  lazy val retryFailedAfter: Duration =
+    Duration.ofMillis(
+      configuration.getMillis("preferencesChanged.retryFailedAfter")
+    )
+
   override def inProgressRetryAfter: Duration =
     Duration.ofMillis(
-      configuration.getMillis(
-        "preferencesChangedWorkItems.retryInProgressAfter")
+      configuration.getMillis("preferencesChanged.retryInProgressAfter")
     )
 
   override def now(): Instant = Instant.now()
