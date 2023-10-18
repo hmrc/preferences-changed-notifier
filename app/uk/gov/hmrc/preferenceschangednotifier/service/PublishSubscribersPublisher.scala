@@ -17,7 +17,7 @@
 package uk.gov.hmrc.preferenceschangednotifier.service
 
 import play.api.Logging
-import uk.gov.hmrc.http.{HeaderCarrier, UpstreamErrorResponse}
+import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, UpstreamErrorResponse}
 import uk.gov.hmrc.http.UpstreamErrorResponse.{
   Upstream4xxResponse,
   Upstream5xxResponse
@@ -66,8 +66,10 @@ class PublishSubscribersPublisher @Inject()(
       .notifySubscriber(req)
       .recover { case ex => recoverNotify(workItem, ex) }
       .flatMap {
-        case Right(s) =>
-          service.completeAndDelete(workItem)
+        case Right(s: HttpResponse) =>
+          service
+            .completeAndDelete(workItem)
+            .map(r => Result(s"${r.message}: $s"))
 
         case Left(Upstream4xxResponse(e)) =>
           processUnrecoverable(workItem, subscriber, e)
@@ -75,10 +77,13 @@ class PublishSubscribersPublisher @Inject()(
         case Left(Upstream5xxResponse(e)) =>
           processRecoverable(workItem, subscriber, e)
 
-        case Left(s) =>
-          logger.warn(
-            s"publish to subscriber ${subscriber.toString} returned unexpected response $s")
-          service.completeWithStatus(workItem, Failed)
+        case Left(UpstreamErrorResponse(message, status, _, _)) =>
+          logger.error(
+            s"publish to subscriber ${subscriber.toString} returned unexpected response: $status, $message")
+          service
+            .completeWithStatus(workItem, Failed)
+            .map(r =>
+              Result(s"${r.message} with http response: $status, $message"))
 
         case e => Future.successful(Result(s"Unexpected result: ${e.toString}"))
       }
@@ -123,7 +128,9 @@ class PublishSubscribersPublisher @Inject()(
     } else {
       logger.debug(
         s"publish to subscriber ${subscriber.toString} failed, will retry")
-      service.completeWithStatus(workItem, Failed)
+      service
+        .completeWithStatus(workItem, Failed)
+        .map(r => Result(s"${r.message} with HTTP response: [${e.message}]"))
     }
   }
 
@@ -134,7 +141,9 @@ class PublishSubscribersPublisher @Inject()(
   ) = {
     logger.error(
       s"publish to subscriber ${subscriber.toString} permanently failed returning $e")
-    service.completeWithStatus(workItem, PermanentlyFailed)
+    service
+      .completeWithStatus(workItem, PermanentlyFailed)
+      .map(r => Result(s"${r.message} with HTTP response: [${e.message}]"))
     // TODO: AUDIT LOG
   }
 

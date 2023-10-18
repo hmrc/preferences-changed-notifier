@@ -51,7 +51,8 @@ class PreferencesChangedService @Inject()(
   def completeAndDelete(
       workItem: WorkItem[PreferencesChangedRef]): Future[Result] =
     pcWorkItemRepo.completeAndDelete(workItem.id).map {
-      case true => Result(s"Completed workitem: ${workItem.id} successfully")
+      case true =>
+        Result(s"Completed & deleted workitem: ${workItem.id} successfully")
       case false =>
         Result(s"Failed to completeAndDelete workitem: ${workItem.id}")
     }
@@ -61,7 +62,7 @@ class PreferencesChangedService @Inject()(
     pcWorkItemRepo.complete(workItem.id, status).map {
       case true =>
         Result(
-          s"Completed workitem: ${workItem.id} with status: $status successfully")
+          s"Successfully completed updating workitem: ${workItem.id} with status: $status")
       case false =>
         Result(
           s"Failed to complete workitem: ${workItem.id} with status: $status")

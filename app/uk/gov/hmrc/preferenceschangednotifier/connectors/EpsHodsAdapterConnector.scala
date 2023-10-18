@@ -57,7 +57,6 @@ class EpsHodsAdapterConnector @Inject()(
       )
       .recover {
         case ex =>
-          println(s"===== $ex")
           throw ex
       }
 

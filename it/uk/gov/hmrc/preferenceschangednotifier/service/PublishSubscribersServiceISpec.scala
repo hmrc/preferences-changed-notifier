@@ -95,8 +95,6 @@ class PublishSubscribersServiceISpec
 
       val result = service.execute.futureValue
       result.message must include(s"Notify error, marking workitem [${wi.id}] as Failed")
-      println(s"===== $result")
-//      result.message must include("error occurred processing subscriber")
     }
   }
 }
