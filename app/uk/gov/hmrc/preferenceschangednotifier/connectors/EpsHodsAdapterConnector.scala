@@ -41,7 +41,8 @@ class EpsHodsAdapterConnector @Inject()(
 
   lazy val baseUrl: String = servicesConfig.baseUrl("eps-hods-adapter")
 
-  private def postUrl = s"$baseUrl/eps-hods-adapter/notify-subscriber"
+  private def postUrl =
+    s"$baseUrl/eps-hods-adapter/preferences/notify-subscriber"
 
   override def notifySubscriber(
       request: NotifySubscriberRequest

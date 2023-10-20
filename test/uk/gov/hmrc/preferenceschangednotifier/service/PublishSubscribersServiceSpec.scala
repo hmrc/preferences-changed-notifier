@@ -78,7 +78,7 @@ class PublishSubscribersServiceSpec
 
     "return correctly when stub returns 200 OK" in new TestCase {
       givenThat(
-        post(urlEqualTo("/eps-hods-adapter/notify-subscriber"))
+        post(urlEqualTo("/eps-hods-adapter/preferences/notify-subscriber"))
           .willReturn(aResponse().withStatus(OK)))
 
       val result = service.execute.futureValue
@@ -88,7 +88,7 @@ class PublishSubscribersServiceSpec
 
     "return correctly when stub returns 4XX error" in new TestCase {
       givenThat(
-        post(urlEqualTo("/eps-hods-adapter/notify-subscriber"))
+        post(urlEqualTo("/eps-hods-adapter/preferences/notify-subscriber"))
           .willReturn(
             aResponse()
               .withStatus(BAD_REQUEST)
@@ -102,7 +102,7 @@ class PublishSubscribersServiceSpec
 
     "return Failed (which is retried) when stub returns 5XX error" in new TestCase {
       givenThat(
-        post(urlEqualTo("/eps-hods-adapter/notify-subscriber"))
+        post(urlEqualTo("/eps-hods-adapter/preferences/notify-subscriber"))
           .willReturn(
             aResponse()
               .withStatus(INTERNAL_SERVER_ERROR)
@@ -117,7 +117,7 @@ class PublishSubscribersServiceSpec
 
     "return Failed (which is retried) when returns a non 200 status" in new TestCase {
       givenThat(
-        post(urlEqualTo("/eps-hods-adapter/notify-subscriber"))
+        post(urlEqualTo("/eps-hods-adapter/preferences/notify-subscriber"))
           .willReturn(
             aResponse()
               .withStatus(CREATED)

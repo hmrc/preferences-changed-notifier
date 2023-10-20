@@ -75,7 +75,7 @@ class EpsHodsAdaptorConnectorSpec
                                             taxIds = Map("nino" -> "AB112233C"))
 
       givenThat(
-        post(urlEqualTo("/eps-hods-adapter/notify-subscriber"))
+        post(urlEqualTo("/eps-hods-adapter/preferences/notify-subscriber"))
           .willReturn(aResponse()
             .withStatus(Status.OK)))
 
@@ -89,7 +89,7 @@ class EpsHodsAdaptorConnectorSpec
                                             taxIds = Map("nino" -> "AB112233C"))
 
       givenThat(
-        post(urlEqualTo("/eps-hods-adapter/notify-subscriber"))
+        post(urlEqualTo("/eps-hods-adapter/preferences/notify-subscriber"))
           .willReturn(aResponse()
             .withStatus(Status.BAD_REQUEST)))
 
@@ -102,7 +102,8 @@ class EpsHodsAdaptorConnectorSpec
                                             Instant.now(),
                                             taxIds = Map("nino" -> "AB112233C"))
 
-      givenThat(post(urlEqualTo("/eps-hods-adapter/notify-subscriberssss")))
+      givenThat(
+        post(urlEqualTo("/eps-hods-adapter/preferences/notify-subscriberssss")))
 
       val result = connector.notifySubscriber(req).futureValue
       result.left.value.statusCode must be(NOT_FOUND)

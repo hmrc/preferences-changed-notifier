@@ -65,6 +65,7 @@ class PublishSubscribersServiceISpec
   override def beforeEach(): Unit = {
     pcRepo.collection.drop().toFuture().futureValue
     pcwiRepo.collection.drop().toFuture().futureValue
+    super.beforeEach()
   }
   
   private def createPcr(preferenceChangedId: ObjectId, preferenceId: ObjectId) = {
@@ -84,7 +85,7 @@ class PublishSubscribersServiceISpec
         changedValue = Paper,
         preferenceId = prefId,
         updatedAt = Instant.now(),
-        taxIds = Map("nino" -> "AB112233C"))
+        taxIds = Map("nino" -> "YY000200A"))
 
       val preferenceChangedRes = pcRepo.replace(pc).futureValue
       
@@ -92,9 +93,9 @@ class PublishSubscribersServiceISpec
         preferenceChangedRes.getUpsertedId.asObjectId().getValue, prefId)
       
       val wi = pcwiRepo.pushUpdated(pcr).futureValue
-
+      
       val result = service.execute.futureValue
-      result.message must include(s"Notify error, marking workitem [${wi.id}] as Failed")
+      result.message must include(s"Completed & deleted workitem: ${wi.id} successfully: HttpResponse status=200")
     }
   }
 }
