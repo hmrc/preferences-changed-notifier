@@ -48,8 +48,7 @@ class EpsHodsAdapterConnector @Inject()(
       request: NotifySubscriberRequest
   )(implicit hc: HeaderCarrier)
     : Future[Either[UpstreamErrorResponse, HttpResponse]] = {
-
-    val aaa = http
+    http
       .POST[NotifySubscriberRequest,
             Either[UpstreamErrorResponse, HttpResponse]](
         postUrl,
@@ -60,7 +59,5 @@ class EpsHodsAdapterConnector @Inject()(
         case ex =>
           throw ex
       }
-
-    aaa
   }
 }
