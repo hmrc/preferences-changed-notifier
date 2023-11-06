@@ -55,9 +55,5 @@ class EpsHodsAdapterConnector @Inject()(
         request,
         Seq("CorrelationId" -> UUID.randomUUID().toString)
       )
-      .recover {
-        case ex =>
-          throw ex
-      }
   }
 }
