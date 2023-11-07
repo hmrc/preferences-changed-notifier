@@ -19,34 +19,38 @@ package uk.gov.hmrc.preferenceschangednotifier.connectors
 import com.google.inject.Inject
 import play.api.Logging
 import uk.gov.hmrc.http.HttpReads.Implicits._
-import uk.gov.hmrc.http.{HeaderCarrier, HttpClient, HttpResponse}
-import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
-import uk.gov.hmrc.preferenceschangednotifier.model.{
-  NotifySubscriberRequest,
-  Subscriber
+import uk.gov.hmrc.http.{
+  HeaderCarrier,
+  HttpClient,
+  HttpResponse,
+  UpstreamErrorResponse
 }
+import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
+import uk.gov.hmrc.preferenceschangednotifier.model.NotifySubscriberRequest
 
 import java.util.UUID
+import javax.inject.Singleton
 import scala.concurrent.{ExecutionContext, Future}
 
-class EpsHodsAdapterConnector @Inject()(http: HttpClient,
-                                        servicesConfig: ServicesConfig)(
-    implicit ec: ExecutionContext,
-    hc: HeaderCarrier)
+@Singleton
+class EpsHodsAdapterConnector @Inject()(
+    http: HttpClient,
+    servicesConfig: ServicesConfig)(implicit ec: ExecutionContext)
     extends Subscriber
     with Logging {
 
   lazy val baseUrl: String = servicesConfig.baseUrl("eps-hods-adapter")
 
-  private def postUrl = s"$baseUrl/eps-hods-adapter/notify-subscriber"
+  private def postUrl =
+    s"$baseUrl/eps-hods-adapter/preferences/notify-subscriber"
 
   override def notifySubscriber(
-      request: NotifySubscriberRequest): Future[HttpResponse] = {
-
-    logger.debug(s"notify-subscriber")
-
+      request: NotifySubscriberRequest
+  )(implicit hc: HeaderCarrier)
+    : Future[Either[UpstreamErrorResponse, HttpResponse]] = {
     http
-      .POST[NotifySubscriberRequest, HttpResponse](
+      .POST[NotifySubscriberRequest,
+            Either[UpstreamErrorResponse, HttpResponse]](
         postUrl,
         request,
         Seq("CorrelationId" -> UUID.randomUUID().toString)

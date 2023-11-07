@@ -14,24 +14,15 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.preferenceschangednotifier.config
+package uk.gov.hmrc.preferenceschangednotifier.connectors
 
-import com.google.inject.{AbstractModule, Provides, Singleton}
-import uk.gov.hmrc.preferenceschangednotifier.connectors.{
-  EpsHodsAdapterConnector,
-  Subscriber
+import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, UpstreamErrorResponse}
+import uk.gov.hmrc.preferenceschangednotifier.model.NotifySubscriberRequest
+
+import scala.concurrent.Future
+
+trait Subscriber {
+  def notifySubscriber(request: NotifySubscriberRequest)(
+      implicit hc: HeaderCarrier
+  ): Future[Either[UpstreamErrorResponse, HttpResponse]]
 }
-
-// $COVERAGE-OFF$Nothing to see here
-class Module extends AbstractModule {
-
-  override def configure(): Unit = {
-    bind(classOf[AppConfig]).asEagerSingleton()
-  }
-  @Provides
-  @Singleton
-  def subscribers(
-      epsHodsAdapterConnector: EpsHodsAdapterConnector
-  ): Seq[Subscriber] = Seq(epsHodsAdapterConnector)
-}
-// $COVERAGE-ON$

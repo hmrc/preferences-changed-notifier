@@ -16,23 +16,29 @@
 
 package uk.gov.hmrc.preferenceschangednotifier.connectors
 
-import org.mockito.ArgumentMatchers.any
+import com.github.tomakehurst.wiremock.client.WireMock.{
+  aResponse,
+  givenThat,
+  post,
+  urlEqualTo
+}
 import org.mockito.MockitoSugar
-import org.scalatest.BeforeAndAfterEach
+import org.scalatest.{BeforeAndAfterEach, EitherValues}
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatestplus.play.PlaySpec
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import play.api.Application
-import play.api.http.Status.OK
+import play.api.http.Status
+import play.api.http.Status.{BAD_REQUEST, NOT_FOUND, OK}
 import play.api.inject.guice.GuiceApplicationBuilder
-import play.api.libs.json.Writes
-import uk.gov.hmrc.http.{HeaderCarrier, HttpClient, HttpReads, HttpResponse}
+import uk.gov.hmrc.http.{HeaderCarrier, HttpClient}
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
+import uk.gov.hmrc.preferenceschangednotifier.WireMockUtil
 import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat.Paper
 import uk.gov.hmrc.preferenceschangednotifier.model.NotifySubscriberRequest
 
 import java.time.Instant
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 class EpsHodsAdaptorConnectorSpec
     extends PlaySpec
@@ -40,44 +46,67 @@ class EpsHodsAdaptorConnectorSpec
     with GuiceOneAppPerSuite
     with MockitoSugar
     with IntegrationPatience
-    with BeforeAndAfterEach {
+    with BeforeAndAfterEach
+    with EitherValues
+    with WireMockUtil {
 
   override def fakeApplication(): Application =
-    GuiceApplicationBuilder().configure("metrics.enabled" -> false).build()
+    GuiceApplicationBuilder()
+      .configure(
+        "metrics.enabled" -> false,
+        "microservice.services.eps-hods-adapter.host" -> "localhost",
+        "microservice.services.eps-hods-adapter.port" -> "22222"
+      )
+      .build()
 
-  val mockClient: HttpClient = mock[HttpClient]
-
+  val httpClient: HttpClient = app.injector.instanceOf[HttpClient]
   private val servicesConfig = app.injector.instanceOf[ServicesConfig]
-  private implicit val ec = app.injector.instanceOf[ExecutionContext]
 
-  implicit val hc = HeaderCarrier()
+  implicit val ec: ExecutionContext = app.injector.instanceOf[ExecutionContext]
+  implicit val hc: HeaderCarrier = HeaderCarrier()
+
   private val connector =
-    new EpsHodsAdapterConnector(mockClient, servicesConfig)
+    new EpsHodsAdapterConnector(httpClient, servicesConfig)
 
-  override def beforeEach(): Unit = {
-    reset(mockClient)
-  }
-
-  "The connector" must {
-    "send a preference update in NPS and receive status Succeded" in {
-
+  "Connector..." must {
+    "return ok when stub returns OK" in {
       val req = new NotifySubscriberRequest(Paper,
                                             Instant.now(),
                                             taxIds = Map("nino" -> "AB112233C"))
 
-      when(
-        mockClient.POST[NotifySubscriberRequest, HttpResponse](
-          any[String],
-          any[NotifySubscriberRequest],
-          any[Seq[(String, String)]])(any[Writes[NotifySubscriberRequest]],
-                                      any[HttpReads[HttpResponse]],
-                                      any[HeaderCarrier],
-                                      any[ExecutionContext]))
-        .thenReturn(Future.successful(HttpResponse(OK, "", Map.empty)))
+      givenThat(
+        post(urlEqualTo("/eps-hods-adapter/preferences/notify-subscriber"))
+          .willReturn(aResponse()
+            .withStatus(Status.OK)))
 
-      val result: HttpResponse = connector.notifySubscriber(req).futureValue
+      val result = connector.notifySubscriber(req).futureValue
+      result.foreach(r => r.status must be(OK))
+    }
 
-      result.status mustBe OK
+    "return left bad-request" in {
+      val req = new NotifySubscriberRequest(Paper,
+                                            Instant.now(),
+                                            taxIds = Map("nino" -> "AB112233C"))
+
+      givenThat(
+        post(urlEqualTo("/eps-hods-adapter/preferences/notify-subscriber"))
+          .willReturn(aResponse()
+            .withStatus(Status.BAD_REQUEST)))
+
+      val result = connector.notifySubscriber(req).futureValue
+      result.left.value.statusCode must be(BAD_REQUEST)
+    }
+
+    "return left not found for bad url" in {
+      val req = new NotifySubscriberRequest(Paper,
+                                            Instant.now(),
+                                            taxIds = Map("nino" -> "AB112233C"))
+
+      givenThat(
+        post(urlEqualTo("/eps-hods-adapter/preferences/notify-subscriberssss")))
+
+      val result = connector.notifySubscriber(req).futureValue
+      result.left.value.statusCode must be(NOT_FOUND)
     }
   }
 
