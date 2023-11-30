@@ -17,7 +17,9 @@
 package uk.gov.hmrc.preferenceschangednotifier.service
 
 
+import org.mongodb.scala.bson
 import org.mongodb.scala.bson.ObjectId
+import org.mongodb.scala.model.Filters
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
@@ -93,9 +95,13 @@ class PublishSubscribersServiceISpec
         preferenceChangedRes.getUpsertedId.asObjectId().getValue, prefId)
       
       val wi = pcwiRepo.pushUpdated(pcr).futureValue
-      
+
       val result = service.execute.futureValue
       result.message must include(s"Completed & deleted workitem: ${wi.id} successfully: HttpResponse status=200")
+
+      val items =
+        pcwiRepo.collection.find(filter = Filters.equal("_id", wi.id)).toFuture().futureValue
+      items.size must be(0)
     }
   }
 }

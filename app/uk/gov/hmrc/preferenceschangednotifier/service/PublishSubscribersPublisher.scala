@@ -64,7 +64,6 @@ class PublishSubscribersPublisher @Inject()(
 
     subscriber
       .notifySubscriber(req)
-      .recover { case ex => recoverNotify(workItem, ex) }
       .flatMap {
         case Right(s: HttpResponse) =>
           service
@@ -88,25 +87,37 @@ class PublishSubscribersPublisher @Inject()(
         case e => Future.successful(Result(s"Unexpected result: ${e.toString}"))
       }
       .map(Option(_))
+      .recoverWith {
+        case ex => recoverNotify(workItem, ex)
+      }
 
   }
 
   private def recoverNotify(workItem: WorkItem[PCR], ex: Throwable) = {
-    service.completeWithStatus(workItem, Failed)
-    Future.successful(
-      Option(Result(
-        s"Notify error, marking workitem [${workItem.id}] as Failed\nException: $ex"))
-    )
+    service
+      .completeWithStatus(workItem, Failed)
+      .map { r =>
+        Option(
+          Result(
+            s"$r\nNotify error, marking workitem [${workItem.id}] as Failed\nException: $ex"
+          )
+        )
+      }
   }
 
-  private def missingSubscriber(workItem: WorkItem[PCR]) = {
+  private def missingSubscriber(
+      workItem: WorkItem[PCR]): Future[Option[Result]] = {
     logger.warn(
       s"Unknown subscriber: ${workItem.item.subscriber}; valid subscribers are: $subscribers")
-    service.completeWithStatus(workItem, PermanentlyFailed)
-    Future.successful(
-      Option(
-        Result(s"Workitem [id: ${workItem.id}] marked as permanently failed:" +
-          s" subscriber invalid [${workItem.item.subscriber}]")))
+    service
+      .completeWithStatus(workItem, PermanentlyFailed)
+      .map { r =>
+        Option(
+          Result(
+            s"$r\nWorkitem [id: ${workItem.id}] marked as permanently failed:" +
+              s" subscriber invalid [${workItem.item.subscriber}]")
+        )
+      }
   }
 
   private def getSubscriber(
@@ -119,7 +130,7 @@ class PublishSubscribersPublisher @Inject()(
       workItem: WorkItem[PCR],
       subscriber: Subscriber,
       e: UpstreamErrorResponse
-  ) = {
+  ): Future[Result] = {
     if (workItem.failureCount > 10) {
       logger.error(s"publish to subscriber ${subscriber.toString}" +
         s"failed ${workItem.failureCount} times, marking as permanently failed\nError: $e")
