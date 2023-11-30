@@ -54,7 +54,8 @@ class PreferencesChangedService @Inject()(
       case true =>
         Result(s"Completed & deleted workitem: ${workItem.id} successfully")
       case false =>
-        Result(s"Failed to completeAndDelete workitem: ${workItem.id}")
+        Result(
+          s"Failed to completeAndDelete workitem: ${workItem.id}, was not in-progress")
     }
 
   def completeWithStatus(workItem: WorkItem[PreferencesChangedRef],
