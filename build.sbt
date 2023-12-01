@@ -4,6 +4,7 @@ val appName: String = "preferences-changed-notifier"
 
 ThisBuild / majorVersion := 0
 ThisBuild / scalaVersion := "2.13.8"
+ThisBuild / scalafmtOnCompile := true
 
 lazy val microservice = Project("preferences-changed-notifier", file("."))
   .enablePlugins(play.sbt.PlayScala, SbtDistributablesPlugin)
@@ -19,4 +20,6 @@ lazy val microservice = Project("preferences-changed-notifier", file("."))
   .settings(resolvers += Resolver.jcenterRepo)
   .settings(CodeCoverageSettings.settings: _*)
 
-addCommandAlias("buildall", ";clean;compile;scalafmt;test:scalafmt;coverage;test;it:test;scalastyle;coverageReport")
+addCommandAlias(
+  "buildall",
+  ";clean;compile;coverage;test;it:test;scalastyle;coverageReport")

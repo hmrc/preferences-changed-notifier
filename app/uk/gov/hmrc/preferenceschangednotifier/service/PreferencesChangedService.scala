@@ -33,7 +33,6 @@ import uk.gov.hmrc.preferenceschangednotifier.repository.{
   PreferencesChangedRepository,
   PreferencesChangedWorkItemRepository
 }
-import uk.gov.hmrc.preferenceschangednotifier.scheduling.Result
 
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -49,31 +48,22 @@ class PreferencesChangedService @Inject()(
 )(implicit val ec: ExecutionContext)
     extends Logging {
   def completeAndDelete(
-      workItem: WorkItem[PreferencesChangedRef]): Future[Result] =
-    pcWorkItemRepo.completeAndDelete(workItem.id).map {
-      case true =>
-        Result(s"Completed & deleted workitem: ${workItem.id} successfully")
-      case false =>
-        Result(
-          s"Failed to completeAndDelete workitem: ${workItem.id}, was not in-progress")
-    }
+      workItem: WorkItem[PreferencesChangedRef]): Future[Boolean] =
+    pcWorkItemRepo.completeAndDelete(workItem.id)
 
   def completeWithStatus(workItem: WorkItem[PreferencesChangedRef],
-                         status: ResultStatus): Future[Result] =
-    pcWorkItemRepo.complete(workItem.id, status).map {
-      case true =>
-        Result(
-          s"Successfully completed updating workitem: ${workItem.id} with status: $status")
-      case false =>
-        Result(
-          s"Failed to complete workitem: ${workItem.id} with status: $status")
-    }
+                         status: ResultStatus): Future[Boolean] =
+    pcWorkItemRepo.complete(workItem.id, status)
 
-  def find(preferenceChangedId: ObjectId): Future[Option[PreferencesChanged]] =
+  def find(preferenceChangedId: ObjectId)
+    : Future[Either[String, PreferencesChanged]] =
     pcRepo.collection
       .find(Filters.eq("_id", preferenceChangedId))
       .toSingle()
       .toFutureOption()
+      .map(a =>
+        Either
+          .cond(a.isDefined, a.get, s"_id ${preferenceChangedId} not found"))
 
   def pull(retryFailedAfter: Duration)
     : Future[Option[WorkItem[PreferencesChangedRef]]] =

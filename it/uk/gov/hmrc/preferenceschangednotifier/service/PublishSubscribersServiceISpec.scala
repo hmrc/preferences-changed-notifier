@@ -17,7 +17,6 @@
 package uk.gov.hmrc.preferenceschangednotifier.service
 
 
-import org.mongodb.scala.bson
 import org.mongodb.scala.bson.ObjectId
 import org.mongodb.scala.model.Filters
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
