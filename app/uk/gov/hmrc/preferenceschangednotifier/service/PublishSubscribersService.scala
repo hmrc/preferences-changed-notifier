@@ -19,19 +19,17 @@ package uk.gov.hmrc.preferenceschangednotifier.service
 import akka.NotUsed
 import akka.stream.Materializer
 import akka.stream.scaladsl.Source
-import cats.data.OptionT
+import cats.data.EitherT
 import play.api.{Configuration, Logging}
 import uk.gov.hmrc.mongo.workitem.WorkItem
 import uk.gov.hmrc.preferenceschangednotifier.model.{
   NotifySubscriberRequest,
-  PreferencesChanged,
   PreferencesChangedRef
 }
 import uk.gov.hmrc.preferenceschangednotifier.scheduling.Result
 
 import java.util.concurrent.TimeUnit
 import javax.inject.{Inject, Singleton}
-import scala.annotation.unused
 import scala.concurrent.duration.Duration
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -57,25 +55,32 @@ class PublishSubscribersService @Inject()(
             .pull(retryFailedAfter)
             .map(_.map(workItem => (NotUsed, workItem)))
       )
-      .runFoldAsync(Result(""))(processWorkItem)
+      .runFoldAsync(Result(""))((acc, wi) => processWorkItem(acc, wi))
       .recover {
         case ex =>
+          logger.error(s"Recovery error $ex")
           Result(ex.getMessage)
       }
 
-  private def processWorkItem(@unused r: Result,
+  private def processWorkItem(acc: Result,
                               workItem: WorkItem[PreferencesChangedRef]) = {
     logger.debug(s"processing workitem: $workItem")
     val res = for {
-      pc: PreferencesChanged <- OptionT(
-        service.find(workItem.item.preferenceChangedId))
-      result <- OptionT(
+      pc <- EitherT(service.find(workItem.item.preferenceChangedId))
+      result <- EitherT(
         publisher.execute(
           NotifySubscriberRequest(pc),
           workItem
         )
       )
     } yield result
-    res.getOrElse(Result(""))
+    res.fold(
+      left =>
+        if (acc.message != "") Result(s"${acc.message}\n$left")
+        else Result(s"$left"),
+      right =>
+        if (acc.message != "") Result(s"${acc.message}\n${right.message}")
+        else Result(s"${right.message}")
+    )
   }
 }

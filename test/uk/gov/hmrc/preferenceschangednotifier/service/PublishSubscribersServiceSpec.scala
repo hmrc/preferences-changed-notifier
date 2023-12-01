@@ -82,7 +82,8 @@ class PublishSubscribersServiceSpec
           .willReturn(aResponse().withStatus(OK)))
 
       val result = service.execute.futureValue
-      result.message must be(
+
+      result.message must include(
         s"Completed & deleted workitem: ${wi.id} successfully: HttpResponse status=200")
     }
 
@@ -95,8 +96,7 @@ class PublishSubscribersServiceSpec
               .withBody("A bad_request message")))
 
       private val result = service.execute.futureValue
-      result.message must include(
-        s"Successfully completed updating workitem: ${wi.id} with status: PermanentlyFailed ")
+      result.message must include("permanently failed")
       result.message must include("'A bad_request message'")
     }
 
@@ -110,9 +110,8 @@ class PublishSubscribersServiceSpec
 
       private val result = service.execute.futureValue
 
-      result.message must include(
-        s"Successfully completed updating workitem: ${wi.id} with status: Failed")
-      result.message must include("'An internal_server_error message'")
+      result.message must include("returned 500")
+      result.message must include("An internal_server_error message")
     }
 
     "return Failed (which is retried) when returns a non 200 status" in new TestCase {

@@ -46,7 +46,7 @@ class PublishSubscribersPublisher @Inject()(
   def execute(
       req: NotifySubscriberRequest,
       workItem: WorkItem[PCR]
-  ): Future[Option[Result]] = {
+  ): Future[Either[String, Result]] = {
 
     val maybeSubscriber = getSubscriber(workItem)
     maybeSubscriber match {
@@ -58,17 +58,20 @@ class PublishSubscribersPublisher @Inject()(
   private def processNotification(
       req: NotifySubscriberRequest,
       subscriber: Subscriber,
-      workItem: WorkItem[PCR]): Future[Option[Result]] = {
+      workItem: WorkItem[PCR]): Future[Either[String, Result]] = {
 
     implicit val hc: HeaderCarrier = HeaderCarrier()
 
     subscriber
       .notifySubscriber(req)
       .flatMap {
-        case Right(s: HttpResponse) =>
+        case Right(r: HttpResponse) =>
           service
             .completeAndDelete(workItem)
-            .map(r => Result(s"${r.message}: $s"))
+            .map { _ =>
+              Right(Result(s"Completed & deleted workitem:" +
+                s" ${workItem.id} successfully: HttpResponse status=${r.status}"))
+            }
 
         case Left(Upstream4xxResponse(e)) =>
           processUnrecoverable(workItem, subscriber, e)
@@ -81,42 +84,42 @@ class PublishSubscribersPublisher @Inject()(
             s"publish to subscriber ${subscriber.toString} returned unexpected response: $status, $message")
           service
             .completeWithStatus(workItem, Failed)
-            .map(r =>
-              Result(s"${r.message} with http response: $status, $message"))
+            .map(_ => Left(s"with http response: $status, $message"))
 
-        case e => Future.successful(Result(s"Unexpected result: ${e.toString}"))
+        case e =>
+          logger.error(
+            s"publish to subscriber ${subscriber.toString} returned unexpected result: $e")
+          service
+            .completeWithStatus(workItem, Failed)
+            .map(_ => Left(s"Unexpected result: ${e.toString}"))
       }
-      .map(Option(_))
       .recoverWith {
         case ex => recoverNotify(workItem, ex)
       }
 
   }
 
-  private def recoverNotify(workItem: WorkItem[PCR], ex: Throwable) = {
+  private def recoverNotify(workItem: WorkItem[PCR],
+                            ex: Throwable): Future[Either[String, Result]] = {
     service
       .completeWithStatus(workItem, Failed)
       .map { r =>
-        Option(
-          Result(
-            s"$r\nNotify error, marking workitem [${workItem.id}] as Failed\nException: $ex"
-          )
+        Left(
+          s"$r\nNotify error, marking workitem [${workItem.id}] as Failed\nException: $ex"
         )
       }
   }
 
   private def missingSubscriber(
-      workItem: WorkItem[PCR]): Future[Option[Result]] = {
+      workItem: WorkItem[PCR]): Future[Either[String, Result]] = {
     logger.warn(
       s"Unknown subscriber: ${workItem.item.subscriber}; valid subscribers are: $subscribers")
     service
       .completeWithStatus(workItem, PermanentlyFailed)
-      .map { r =>
-        Option(
-          Result(
-            s"$r\nWorkitem [id: ${workItem.id}] marked as permanently failed:" +
-              s" subscriber invalid [${workItem.item.subscriber}]")
-        )
+      .map { _ =>
+        Left(
+          s"Workitem [id: ${workItem.id}] marked as permanently failed:" +
+            s" subscriber invalid [${workItem.item.subscriber}]")
       }
   }
 
@@ -130,18 +133,29 @@ class PublishSubscribersPublisher @Inject()(
       workItem: WorkItem[PCR],
       subscriber: Subscriber,
       e: UpstreamErrorResponse
-  ): Future[Result] = {
+  ): Future[Either[String, Result]] = {
     if (workItem.failureCount > 10) {
-      logger.error(s"publish to subscriber ${subscriber.toString}" +
-        s"failed ${workItem.failureCount} times, marking as permanently failed\nError: $e")
-      service.completeWithStatus(workItem, PermanentlyFailed)
+      val msg: String = s"publish to subscriber ${subscriber.toString}" +
+        s"failed ${workItem.failureCount} times, marking as permanently failed\nError: $e"
+
+      logger.error(msg)
+      service
+        .completeWithStatus(workItem, PermanentlyFailed)
+        .map { a: Boolean =>
+          Left(s"$msg. Workitem updated $a")
+        }
       // TODO: AUDIT LOG
     } else {
-      logger.debug(
-        s"publish to subscriber ${subscriber.toString} failed, will retry")
+      val msg =
+        s"publish to subscriber ${subscriber.toString} failed, with HTTP response: [${e.message}], will retry"
+      logger.debug(msg)
+
       service
         .completeWithStatus(workItem, Failed)
-        .map(r => Result(s"${r.message} with HTTP response: [${e.message}]"))
+        .map { a: Boolean =>
+          Left(s"$msg. Workitem updated $a")
+        }
+
     }
   }
 
@@ -149,12 +163,16 @@ class PublishSubscribersPublisher @Inject()(
       workItem: WorkItem[PCR],
       subscriber: Subscriber,
       e: UpstreamErrorResponse
-  ) = {
-    logger.error(
-      s"publish to subscriber ${subscriber.toString} permanently failed returning $e")
+  ): Future[Either[String, Result]] = {
+    val msg =
+      s"publish to subscriber ${subscriber.toString} permanently failed returning $e"
+    logger.error(msg)
+
     service
       .completeWithStatus(workItem, PermanentlyFailed)
-      .map(r => Result(s"${r.message} with HTTP response: [${e.message}]"))
+      .map { a: Boolean =>
+        Left(s"$msg. Workitem updated $a")
+      }
     // TODO: AUDIT LOG
   }
 
