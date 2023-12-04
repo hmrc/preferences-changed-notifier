@@ -16,14 +16,15 @@
 
 package uk.gov.hmrc.preferenceschangednotifier.repository
 
+import org.mongodb.scala.model.ReturnDocument.AFTER
 import org.mongodb.scala.model.{
   Filters,
+  FindOneAndUpdateOptions,
   IndexModel,
   IndexOptions,
   Indexes,
-  ReplaceOptions
+  Updates
 }
-import org.mongodb.scala.result
 import play.api.{Configuration, Logger}
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
@@ -33,6 +34,14 @@ import java.util.concurrent.TimeUnit
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 
+/**
+  * Keeps a record of those preferences that have changed their optin/optout
+  * values. So if someone optsin, they will have Digital delivery or
+  * optout will have Paper delivery. This is required because several downstream
+  * systems want to know if the value has been changed.
+  * NPS: Via the eps-Hods-adapter service
+  * UPS: Via the updated-print-suppression service
+  */
 @Singleton
 class PreferencesChangedRepository @Inject()(
     mongo: MongoComponent,
@@ -56,17 +65,33 @@ class PreferencesChangedRepository @Inject()(
 
   private val logger: Logger = Logger(getClass)
 
-  def replace(item: PreferencesChanged): Future[result.UpdateResult] = {
+  /** Insert new update, unless already in existence for specified preferenceId
+    *
+    * @param item describes the document to insert or update
+    * @return updated copy of the document
+    */
+  def upsert(item: PreferencesChanged): Future[PreferencesChanged] =
     collection
-      .replaceOne(
+      .findOneAndUpdate(
         filter = Filters.eq("preferenceId", item.preferenceId),
-        replacement = item,
-        options = ReplaceOptions().upsert(true)
+        update = updates(item),
+        options = FindOneAndUpdateOptions().upsert(true).returnDocument(AFTER)
       )
       .toFuture()
       .recover { ex =>
-        logger.error(s"Recover during replace $ex")
+        logger.error(s"Recover during upsert: $ex")
         throw ex
       }
-  }
+
+  // Create update statements for creating upsert
+  private def updates(item: PreferencesChanged) =
+    Updates.combine(
+      // for updates, no need to specify preferenceId because we found it!
+      Updates.set("changedValue", item.changedValue.name),
+      Updates.set("updatedAt", item.updatedAt),
+      Updates.set("taxIds", item.taxIds),
+      // for new documents only, need to specify the doc id and pref id
+      Updates.setOnInsert("_id", item._id),
+      Updates.setOnInsert("preferenceId", item.preferenceId)
+    )
 }

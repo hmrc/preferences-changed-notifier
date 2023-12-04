@@ -20,6 +20,7 @@ import play.api.Configuration
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
+import scala.language.implicitConversions
 
 trait SchedulingConfig {
   val configuration: Configuration
