@@ -40,6 +40,7 @@ class PreferencesChangedSpec extends AnyFreeSpec {
 
     "MessageDeliveryFormat format correctly" in {
       val a = PreferencesChanged(
+        _id = new ObjectId(),
         changedValue = Paper,
         preferenceId = new ObjectId(),
         updatedAt = Instant.now(),
@@ -57,6 +58,7 @@ class PreferencesChangedSpec extends AnyFreeSpec {
     "instant mongo format correctly" in {
       val now = Instant.now()
       val a = PreferencesChanged(
+        _id = new ObjectId(),
         changedValue = Paper,
         preferenceId = new ObjectId(),
         updatedAt = now,
@@ -77,6 +79,7 @@ class PreferencesChangedSpec extends AnyFreeSpec {
     "ObjectId format correctly" in {
       val preferenceId = new ObjectId()
       val a = PreferencesChanged(
+        _id = new ObjectId(),
         changedValue = Paper,
         preferenceId = preferenceId,
         updatedAt = Instant.now(),
@@ -94,6 +97,7 @@ class PreferencesChangedSpec extends AnyFreeSpec {
 
     "taxIds format correctly" in {
       val a = PreferencesChanged(
+        _id = new ObjectId(),
         changedValue = Paper,
         preferenceId = new ObjectId(),
         updatedAt = Instant.now(),

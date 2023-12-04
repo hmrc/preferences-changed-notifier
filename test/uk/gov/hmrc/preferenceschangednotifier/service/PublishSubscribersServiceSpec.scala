@@ -140,18 +140,17 @@ class PublishSubscribersServiceSpec
     // push an item into the pc repo
     val prefId = new ObjectId()
 
-    val pc = PreferencesChanged(changedValue = Paper,
+    val pc = PreferencesChanged(_id = new ObjectId(),
+                                changedValue = Paper,
                                 preferenceId = prefId,
                                 updatedAt = Instant.now(),
                                 taxIds = Map("nino" -> "AB112233C"))
 
     // insert a preference changed document
     val preferenceChangedRes =
-      pcRepo.replace(pc).futureValue
+      pcRepo.upsert(pc).futureValue
 
-    val pcr = createPcr(
-      preferenceChangedRes.getUpsertedId.asObjectId().getValue,
-      prefId)
+    val pcr = createPcr(preferenceChangedRes._id, prefId)
 
     // insert a workitem
     val wi = pcwiRepo.pushUpdated(pcr).futureValue

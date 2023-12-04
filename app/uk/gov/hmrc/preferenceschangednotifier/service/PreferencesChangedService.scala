@@ -75,9 +75,11 @@ class PreferencesChangedService @Inject()(
   def preferenceChanged(pcRequest: PreferencesChangedRequest)
     : EitherT[Future, ErrorResponse, Unit] = {
     for {
-      id <- EitherT(addPreferenceChanged(pcRequest))
-      unit <- EitherT(addPreferenceChangedWorkItems(id, pcRequest))
-    } yield unit
+      pcId <- EitherT(addPreferenceChanged(pcRequest))
+      res <- EitherT(
+        addPreferenceChangedWorkItems(pcId,
+                                      new ObjectId(pcRequest.preferenceId)))
+    } yield res
 
   }
 
@@ -97,19 +99,13 @@ class PreferencesChangedService @Inject()(
     }
   }
 
+  // Add or update the preference changed document
   private def updateRepo(req: PreferencesChanged) = {
     pcRepo
-      .replace(req)
-      .map {
-        case a if a.wasAcknowledged() && a.getUpsertedId == null =>
-          logger.debug(s"existing preference changed")
-          Right(req.preferenceId)
-        case b if b.wasAcknowledged() && b.getUpsertedId != null =>
-          logger.debug(s"new preference changed")
-          Right(b.getUpsertedId.asObjectId().getValue)
-        case e =>
-          logger.error(s"Error during addPreferenceChanged $e")
-          Left(PersistenceError(s"$e"))
+      .upsert(req)
+      .map { doc =>
+        logger.debug(s"existing preference changed")
+        Right(doc._id)
       }
       .recover { ex =>
         logger.error(s"Recover during addPreferenceChanged $ex")
@@ -117,21 +113,17 @@ class PreferencesChangedService @Inject()(
       }
   }
 
+  // Create a workitem for the specified preference changed
   private def addPreferenceChangedWorkItems(
-      id: ObjectId,
-      pc: PreferencesChangedRequest): Future[Either[ErrorResponse, Unit]] = {
+      pcId: ObjectId,
+      pId: ObjectId): Future[Either[ErrorResponse, Unit]] =
+    pcWorkItemRepo
+      .pushUpdated(
+        PreferencesChangedRef(pcId, pId, "EpsHodsAdapterConnector")
+      )
+      .map(_ => Right(()))
+      .recover { ex =>
+        Left(PersistenceError(ex.getMessage))
+      }
 
-    Try {
-      val sub1Pref = PreferencesChangedRef(id,
-                                           new ObjectId(pc.preferenceId),
-                                           // TODO: Add multiple subscribers by name from config
-                                           subscriber =
-                                             "EpsHodsAdapterConnector")
-
-      val _ = pcWorkItemRepo.pushUpdated(sub1Pref)
-    } match {
-      case Success(_)  => Future.successful(Right(()))
-      case Failure(ex) => Future.successful(Left(PersistenceError(ex.toString)))
-    }
-  }
 }

@@ -83,15 +83,14 @@ class PublishSubscribersServiceISpec
       val prefId= new ObjectId()
       
       val pc= PreferencesChanged(
+        _id = new ObjectId,
         changedValue = Paper,
         preferenceId = prefId,
         updatedAt = Instant.now(),
         taxIds = Map("nino" -> "YY000200A"))
 
-      val preferenceChangedRes = pcRepo.replace(pc).futureValue
-      
-      val pcr  = createPcr(
-        preferenceChangedRes.getUpsertedId.asObjectId().getValue, prefId)
+      val preferenceChangedRes = pcRepo.upsert(pc).futureValue
+      val pcr  = createPcr(preferenceChangedRes._id, prefId)
       
       val wi = pcwiRepo.pushUpdated(pcr).futureValue
 

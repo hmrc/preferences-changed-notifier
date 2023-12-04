@@ -47,6 +47,11 @@ class PublishSubscribersService @Inject()(
       TimeUnit.SECONDS
     )
 
+  /**
+    * Called by scheduler to find items for workload processing.
+    * Workloads will call any registered subscribers to notify
+    * them of a changed optin/optout value.
+    */
   def execute: Future[Result] =
     Source
       .unfoldAsync[NotUsed, WorkItem[PreferencesChangedRef]](NotUsed)(
@@ -66,13 +71,11 @@ class PublishSubscribersService @Inject()(
                               workItem: WorkItem[PreferencesChangedRef]) = {
     logger.debug(s"processing workitem: $workItem")
     val res = for {
+      // locate the preferenceChanged document specified in the workItem
       pc <- EitherT(service.find(workItem.item.preferenceChangedId))
+      // notify subscribers of the change
       result <- EitherT(
-        publisher.execute(
-          NotifySubscriberRequest(pc),
-          workItem
-        )
-      )
+        publisher.execute(NotifySubscriberRequest(pc), workItem))
     } yield result
     res.fold(
       left =>

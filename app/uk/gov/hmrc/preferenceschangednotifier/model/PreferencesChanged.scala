@@ -30,6 +30,7 @@ import java.time.Instant
   * Must ensure that instant formatting is consistent with mongo.
   */
 case class PreferencesChanged(
+    _id: ObjectId,
     changedValue: MessageDeliveryFormat,
     preferenceId: ObjectId, // INDEX
     updatedAt: Instant,
@@ -40,10 +41,13 @@ object PreferencesChanged {
 
   // Create a mongo type from the rest request
   def from(pcRequest: PreferencesChangedRequest): PreferencesChanged = {
-    PreferencesChanged(changedValue = pcRequest.changedValue,
-                       preferenceId = new ObjectId(pcRequest.preferenceId),
-                       updatedAt = pcRequest.updatedAt,
-                       taxIds = pcRequest.taxIds)
+    PreferencesChanged(
+      _id = new ObjectId(),
+      changedValue = pcRequest.changedValue,
+      preferenceId = new ObjectId(pcRequest.preferenceId),
+      updatedAt = pcRequest.updatedAt,
+      taxIds = pcRequest.taxIds
+    )
   }
 
   implicit val objectIdFormat: Format[ObjectId] = MongoFormats.objectIdFormat

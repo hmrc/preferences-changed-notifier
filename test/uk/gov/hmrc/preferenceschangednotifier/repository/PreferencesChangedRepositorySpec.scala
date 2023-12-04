@@ -78,29 +78,34 @@ class PreferencesChangedRepositorySpec
     }
 
     "inserts correctly" in {
-      val a = PreferencesChanged(Paper,
+      val a = PreferencesChanged(_id = new ObjectId(),
+                                 Paper,
                                  new ObjectId(),
                                  Instant.now(),
                                  Map("nino" -> "AB112233D"))
-      val result = repository.replace(a).futureValue
-      result.wasAcknowledged mustEqual true
+      val result = repository.upsert(a).futureValue
+      result._id mustNot be(null)
     }
 
     "upserts by preferenceId correctly" in {
       val preferenceId = new ObjectId()
-      val a = PreferencesChanged(Paper,
+      val objectId = new ObjectId()
+
+      val a = PreferencesChanged(_id = objectId,
+                                 Paper,
                                  preferenceId,
                                  Instant.now(),
                                  Map("nino" -> "AB112233D"))
       val r1 = repository.collection.insertOne(a).toFuture().futureValue
       r1.wasAcknowledged() mustEqual (true)
 
-      val b = PreferencesChanged(Digital,
+      val b = PreferencesChanged(_id = new ObjectId(),
+                                 Digital,
                                  preferenceId,
                                  Instant.now(),
                                  Map("nino" -> "AB112233D"))
-      val r2 = repository.replace(item = b).futureValue
-      r2.wasAcknowledged() mustEqual (true)
+      val r2 = repository.upsert(item = b).futureValue
+      r2._id must be(objectId)
 
       val item = repository.collection
         .find(
@@ -110,6 +115,44 @@ class PreferencesChangedRepositorySpec
         .toFuture()
         .futureValue
       item.changedValue mustEqual (Digital)
+      item._id must be(objectId)
+    }
+
+    "inserts two separate new objects correctly" in {
+      val preferenceId1 = new ObjectId()
+      val preferenceId2 = new ObjectId()
+
+      val objectId1 = new ObjectId()
+      val objectId2 = new ObjectId()
+
+      val a = PreferencesChanged(_id = objectId1,
+                                 Paper,
+                                 preferenceId1,
+                                 Instant.now(),
+                                 Map("nino" -> "AB112233D"))
+
+      // Insert object A
+      val r1 = repository.collection.insertOne(a).toFuture().futureValue
+      r1.wasAcknowledged() mustEqual (true)
+
+      val b = PreferencesChanged(_id = objectId2,
+                                 Digital,
+                                 preferenceId2,
+                                 Instant.now(),
+                                 Map("nino" -> "AB112233A"))
+
+      val r2 = repository.upsert(item = b).futureValue
+      r2._id must be(objectId2)
+
+      val item = repository.collection
+        .find(
+          filter = Filters.eq("preferenceId", preferenceId1)
+        )
+        .toSingle()
+        .toFuture()
+        .futureValue
+      item.changedValue mustEqual (Paper)
+      item._id must be(objectId1)
     }
   }
 
