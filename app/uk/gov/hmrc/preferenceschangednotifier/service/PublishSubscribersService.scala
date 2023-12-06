@@ -19,11 +19,13 @@ package uk.gov.hmrc.preferenceschangednotifier.service
 import akka.NotUsed
 import akka.stream.Materializer
 import akka.stream.scaladsl.Source
-import cats.data.EitherT
 import play.api.{Configuration, Logging}
+import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.mongo.workitem.WorkItem
+import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.preferenceschangednotifier.model.{
   NotifySubscriberRequest,
+  PreferencesChanged,
   PreferencesChangedRef
 }
 import uk.gov.hmrc.preferenceschangednotifier.scheduling.Result
@@ -37,9 +39,12 @@ import scala.concurrent.{ExecutionContext, Future}
 class PublishSubscribersService @Inject()(
     service: PreferencesChangedService,
     publisher: PublishSubscribersPublisher,
+    auditConnector: AuditConnector,
     configuration: Configuration
 )(implicit ec: ExecutionContext, mat: Materializer)
     extends Logging {
+
+  private implicit val hc: HeaderCarrier = HeaderCarrier()
 
   lazy val retryFailedAfter: Duration =
     Duration(
@@ -67,23 +72,60 @@ class PublishSubscribersService @Inject()(
           Result(ex.getMessage)
       }
 
-  private def processWorkItem(acc: Result,
-                              workItem: WorkItem[PreferencesChangedRef]) = {
+  private def processWorkItem(
+      acc: Result,
+      workItem: WorkItem[PreferencesChangedRef]): Future[Result] = {
     logger.debug(s"processing workitem: $workItem")
-    val res = for {
-      // locate the preferenceChanged document specified in the workItem
-      pc <- EitherT(service.find(workItem.item.preferenceChangedId))
-      // notify subscribers of the change
-      result <- EitherT(
-        publisher.execute(NotifySubscriberRequest(pc), workItem))
-    } yield result
-    res.fold(
-      left =>
-        if (acc.message != "") Result(s"${acc.message}\n$left")
-        else Result(s"$left"),
-      right =>
-        if (acc.message != "") Result(s"${acc.message}\n${right.message}")
-        else Result(s"${right.message}")
+
+    val preferencesChanged = service.find(workItem.item.preferenceChangedId)
+    preferencesChanged.flatMap {
+      case Right(pc) =>
+        execute(pc, workItem)
+      case Left(msg) =>
+        audit(workItem, msg)
+        Future.successful(Result(s"$msg ${acc.message}"))
+    }
+  }
+
+  private def execute(
+      pc: PreferencesChanged,
+      workItem: WorkItem[PreferencesChangedRef]): Future[Result] = {
+    publisher
+      .execute(NotifySubscriberRequest(pc), workItem)
+      .map {
+        case Right(result) =>
+          result
+        case Left(msg) =>
+          audit(pc, msg)
+          Result(msg)
+      }
+  }
+
+  private def audit(pc: PreferencesChanged, msg: String): Unit = {
+    logger.error(s"Failed to notify subscriber: $msg")
+    auditConnector.sendExplicitAudit(
+      auditType = "notify-subscriber-error",
+      detail = Map(
+        "nino" -> s"${pc.taxIds.getOrElse("nino", "Not found")}",
+        "saUtr" -> s"${pc.taxIds.getOrElse("sautr", "Not found")}",
+        "preferenceId" -> s"${pc.preferenceId}",
+        "error" -> msg
+      )
+    )
+  }
+
+  private def audit(workItem: WorkItem[PreferencesChangedRef],
+                    msg: String): Unit = {
+    logger.error(s"Failed to find preferencesChanged document: $msg")
+    auditConnector.sendExplicitAudit(
+      auditType = "notify-subscriber-error",
+      detail = Map(
+        "preferenceChangedId" -> s"${workItem.item.preferenceChangedId}",
+        "preferenceId" -> s"${workItem.item.preferenceId}",
+        "subscriber" -> s"${workItem.item.subscriber}",
+        "workitemStatus" -> s"${workItem.status}",
+        "error" -> msg
+      )
     )
   }
 }
