@@ -59,7 +59,8 @@ class PublishSubscribersServiceSpec
       .configure(
         "metrics.enabled" -> false,
         "microservice.services.eps-hods-adapter.host" -> "localhost",
-        "microservice.services.eps-hods-adapter.port" -> "22222"
+        "microservice.services.eps-hods-adapter.port" -> "22222",
+        "featureFlag.useUPS" -> true
       )
       .build()
 
@@ -133,7 +134,7 @@ class PublishSubscribersServiceSpec
                         preferenceId: ObjectId) = {
     PreferencesChangedRef(preferenceChangedId = preferenceChangedId,
                           preferenceId = preferenceId,
-                          subscriber = "EpsHodsAdapterConnector")
+                          subscriber = "EpsHodsAdapter")
   }
 
   class TestCase {

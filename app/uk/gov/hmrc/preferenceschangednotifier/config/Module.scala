@@ -19,7 +19,8 @@ package uk.gov.hmrc.preferenceschangednotifier.config
 import com.google.inject.{AbstractModule, Provides, Singleton}
 import uk.gov.hmrc.preferenceschangednotifier.connectors.{
   EpsHodsAdapterConnector,
-  Subscriber
+  Subscriber,
+  UpdatedPrintSuppressionsConnector
 }
 
 // $COVERAGE-OFF$Nothing to see here
@@ -31,7 +32,9 @@ class Module extends AbstractModule {
   @Provides
   @Singleton
   def subscribers(
-      epsHodsAdapterConnector: EpsHodsAdapterConnector
-  ): Seq[Subscriber] = Seq(epsHodsAdapterConnector)
+      epsHodsAdapterConnector: EpsHodsAdapterConnector,
+      updatedPrintSuppressionConnector: UpdatedPrintSuppressionsConnector
+  ): Seq[Subscriber] =
+    Seq(epsHodsAdapterConnector, updatedPrintSuppressionConnector)
 }
 // $COVERAGE-ON$

@@ -48,8 +48,7 @@ class PublishSubscribersPublisher @Inject()(
       workItem: WorkItem[PCR]
   ): Future[Either[String, Result]] = {
 
-    val maybeSubscriber = getSubscriber(workItem)
-    maybeSubscriber match {
+    getSubscriber(workItem) match {
       case None             => missingSubscriber(workItem)
       case Some(subscriber) => processNotification(req, subscriber, workItem)
     }
@@ -113,7 +112,8 @@ class PublishSubscribersPublisher @Inject()(
   private def missingSubscriber(
       workItem: WorkItem[PCR]): Future[Either[String, Result]] = {
     logger.warn(
-      s"Unknown subscriber: ${workItem.item.subscriber}; valid subscribers are: $subscribers")
+      s"Unknown subscriber: ${workItem.item.subscriber}; valid subscribers are: ${subscribers
+        .foreach(_.name)}")
     service
       .completeWithStatus(workItem, PermanentlyFailed)
       .map { _ =>
@@ -125,9 +125,7 @@ class PublishSubscribersPublisher @Inject()(
 
   private def getSubscriber(
       workItem: WorkItem[PreferencesChangedRef]): Option[Subscriber] =
-    subscribers.find(s => {
-      s.getClass.getSimpleName == workItem.item.subscriber
-    })
+    subscribers.find(s => { s.name == workItem.item.subscriber })
 
   private def processRecoverable(
       workItem: WorkItem[PCR],

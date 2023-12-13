@@ -20,6 +20,7 @@ import akka.actor.ActorSystem
 import akka.stream.Materializer
 import cats.data.EitherT
 import org.mockito.ArgumentMatchers.any
+import org.mockito.ArgumentMatchersSugar.eqTo
 import org.mockito.MockitoSugar.{mock, when}
 import org.mongodb.scala.bson.ObjectId
 import org.scalatest.freespec.AnyFreeSpec
@@ -28,7 +29,7 @@ import org.scalatest.matchers.should.Matchers
 import play.api.http.{ContentTypes, Status}
 import play.api.libs.json.Json
 import play.api.test.Helpers._
-import play.api.test.{FakeRequest, FakeHeaders, Helpers}
+import play.api.test.{FakeHeaders, FakeRequest, Helpers}
 import uk.gov.hmrc.preferenceschangednotifier.controllers.model.PreferencesChangedRequest
 import uk.gov.hmrc.preferenceschangednotifier.service.PreferencesChangedService
 import uk.gov.hmrc.preferenceschangednotifier.model.ServerError
@@ -48,11 +49,11 @@ class PreferencesChangedControllerSpec extends AnyFreeSpec with Matchers {
     Helpers.stubControllerComponents(),
     service)
 
-  private def createFakePostRequest(reqBody: String) =
+  private def createFakePostRequest(reqBody: String, flag: (String, String)) =
     FakeRequest(
       "POST",
       routes.PreferencesChangedController.preferencesChanged().url,
-      FakeHeaders(Seq(CONTENT_TYPE -> ContentTypes.JSON)),
+      FakeHeaders(Seq(CONTENT_TYPE -> ContentTypes.JSON, flag)), //"X-SUBSCRIBE-UPS" -> "true")),
       Json.parse(reqBody)
     )
 
@@ -67,9 +68,11 @@ class PreferencesChangedControllerSpec extends AnyFreeSpec with Matchers {
            |  "taxIds"       : { "nino" : "AB112233C", "sautr" : "abcde" }
            |}""".stripMargin
 
-      val fakePostRequest = createFakePostRequest(reqBody)
+      val fakePostRequest =
+        createFakePostRequest(reqBody, "X-SUBSCRIBE-UPS" -> "true")
 
-      when(service.preferenceChanged(any[PreferencesChangedRequest]))
+      when(
+        service.preferenceChanged(any[PreferencesChangedRequest], eqTo(true)))
         .thenReturn(EitherT.rightT(()))
 
       val result = controller.preferencesChanged()(fakePostRequest)
@@ -85,9 +88,11 @@ class PreferencesChangedControllerSpec extends AnyFreeSpec with Matchers {
           |"taxIds":{"nino":"AB112233C"}
           |}""".stripMargin
 
-      val fakePostRequest = createFakePostRequest(reqBody)
+      val fakePostRequest =
+        createFakePostRequest(reqBody, "X-SUBSCRIBE-UPS" -> "true")
 
-      when(service.preferenceChanged(any[PreferencesChangedRequest]))
+      when(
+        service.preferenceChanged(any[PreferencesChangedRequest], eqTo(true)))
         .thenReturn(EitherT.leftT(ServerError("whatever")))
 
       val result = controller.preferencesChanged()(fakePostRequest)
@@ -108,14 +113,56 @@ class PreferencesChangedControllerSpec extends AnyFreeSpec with Matchers {
             |}
             |""".stripMargin
 
-      val fakePostRequest = createFakePostRequest(reqBody)
+      val fakePostRequest =
+        createFakePostRequest(reqBody, "X-SUBSCRIBE-UPS" -> "true")
 
-      when(service.preferenceChanged(any[PreferencesChangedRequest]))
+      when(
+        service.preferenceChanged(any[PreferencesChangedRequest], eqTo(true)))
         .thenReturn(EitherT.leftT(ServerError("whatever")))
 
       val result = controller.preferencesChanged()(fakePostRequest)
       contentAsString(result) must equal("whatever")
       status(result) must be(Status.INTERNAL_SERVER_ERROR)
+    }
+
+    "still succeeds when specifying dont subscribe to UPS flag" in {
+      val reqBody =
+        s"""{
+           |  "changedValue" : "paper",
+           |  "preferenceId" : "${new ObjectId().toString}",
+           |  "updatedAt"    : "${Instant.now()}",
+           |  "taxIds"       : { "nino" : "AB112233C", "sautr" : "abcde" }
+           |}""".stripMargin
+
+      val fakePostRequest =
+        createFakePostRequest(reqBody, "X-SUBSCRIBE-UPS" -> "false")
+
+      when(
+        service.preferenceChanged(any[PreferencesChangedRequest], eqTo(false)))
+        .thenReturn(EitherT.rightT(()))
+
+      val result = controller.preferencesChanged()(fakePostRequest)
+      status(result) shouldBe Status.OK
+    }
+
+    "still succeeds when subscribe to UPS flag does not exist" in {
+      val reqBody =
+        s"""{
+           |  "changedValue" : "paper",
+           |  "preferenceId" : "${new ObjectId().toString}",
+           |  "updatedAt"    : "${Instant.now()}",
+           |  "taxIds"       : { "nino" : "AB112233C", "sautr" : "abcde" }
+           |}""".stripMargin
+
+      val fakePostRequest =
+        createFakePostRequest(reqBody, ("X-WRONG" -> "false"))
+
+      when(
+        service.preferenceChanged(any[PreferencesChangedRequest], eqTo(false)))
+        .thenReturn(EitherT.rightT(()))
+
+      val result = controller.preferencesChanged()(fakePostRequest)
+      status(result) shouldBe Status.OK
     }
 
   }
