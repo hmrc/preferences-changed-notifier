@@ -16,26 +16,24 @@
 
 package uk.gov.hmrc.preferenceschangednotifier.connectors
 
-import com.google.inject.Inject
 import play.api.Logging
-
 import uk.gov.hmrc.http.HttpClient
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
+import javax.inject.{Inject, Singleton}
 
-import javax.inject.Singleton
 @Singleton
-class EpsHodsAdapterConnector @Inject()(http: HttpClient,
-                                        servicesConfig: ServicesConfig)
+class UpdatedPrintSuppressionsConnector @Inject()(
+    http: HttpClient,
+    servicesConfig: ServicesConfig)
     extends Subscriber
     with Logging {
 
-  override val name = "EpsHodsAdapter"
+  override val name = "UpdatedPrintSuppressions"
 
   override val httpClient: HttpClient = http
 
-  lazy val baseUrl: String = servicesConfig.baseUrl("eps-hods-adapter")
+  lazy val baseUrl: String =
+    servicesConfig.baseUrl("updated-print-suppressions")
 
-  override def url: String =
-    s"$baseUrl/eps-hods-adapter/preferences/notify-subscriber"
-
+  override def url: String = s"$baseUrl/preferences/notify-subscriber"
 }

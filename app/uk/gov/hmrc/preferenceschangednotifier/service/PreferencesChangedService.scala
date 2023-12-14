@@ -21,6 +21,7 @@ import org.bson.types.ObjectId
 import org.mongodb.scala.model.Filters
 import play.api.Logging
 import uk.gov.hmrc.mongo.workitem.{ResultStatus, WorkItem}
+import uk.gov.hmrc.preferenceschangednotifier.connectors.Subscriber
 import uk.gov.hmrc.preferenceschangednotifier.controllers.model.PreferencesChangedRequest
 import uk.gov.hmrc.preferenceschangednotifier.model.{
   ErrorResponse,
@@ -44,7 +45,8 @@ import scala.util.{Failure, Success, Try}
 @Singleton
 class PreferencesChangedService @Inject()(
     pcRepo: PreferencesChangedRepository,
-    pcWorkItemRepo: PreferencesChangedWorkItemRepository
+    pcWorkItemRepo: PreferencesChangedWorkItemRepository,
+    subscribers: Seq[Subscriber]
 )(implicit val ec: ExecutionContext)
     extends Logging {
   def completeAndDelete(
@@ -72,13 +74,16 @@ class PreferencesChangedService @Inject()(
       Instant.now()
     )
 
-  def preferenceChanged(pcRequest: PreferencesChangedRequest)
-    : EitherT[Future, ErrorResponse, Unit] = {
+  def preferenceChanged(
+      pcRequest: PreferencesChangedRequest,
+      updateUPS: Boolean): EitherT[Future, ErrorResponse, Unit] = {
+
     for {
       pcId <- EitherT(addPreferenceChanged(pcRequest))
       res <- EitherT(
         addPreferenceChangedWorkItems(pcId,
-                                      new ObjectId(pcRequest.preferenceId)))
+                                      new ObjectId(pcRequest.preferenceId),
+                                      updateUPS))
     } yield res
 
   }
@@ -113,17 +118,46 @@ class PreferencesChangedService @Inject()(
       }
   }
 
+  private def filterSubscribers(updateUPS: Boolean) = {
+    val items = subscribers.filterNot((p: Subscriber) => {
+      (p.name == "UpdatedPrintSuppressions") && (updateUPS == false)
+    })
+    items
+  }
+
   // Create a workitem for the specified preference changed
   private def addPreferenceChangedWorkItems(
       pcId: ObjectId,
-      pId: ObjectId): Future[Either[ErrorResponse, Unit]] =
-    pcWorkItemRepo
-      .pushUpdated(
-        PreferencesChangedRef(pcId, pId, "EpsHodsAdapterConnector")
-      )
-      .map(_ => Right(()))
-      .recover { ex =>
-        Left(PersistenceError(ex.getMessage))
+      pId: ObjectId,
+      updateUPS: Boolean): Future[Either[ErrorResponse, Unit]] = {
+
+    Future
+      .sequence {
+        filterSubscribers(updateUPS).map { s =>
+          pcWorkItemRepo
+            .pushUpdated(
+              PreferencesChangedRef(pcId, pId, s.name)
+            )
+            .map(_ => Right(()))
+            .recover { ex =>
+              Left(PersistenceError(ex.getMessage))
+            }
+
+        }
       }
+      .map { seq =>
+        {
+          if (seq.exists(_.isLeft)) {
+            Left(
+              seq
+                .collect { case Left(ex) => ex }
+                .fold(PersistenceError(""))((acc, next) =>
+                  PersistenceError(s"${acc.message}\n${next.message}")))
+          } else {
+            Right(())
+          }
+        }
+      }
+  }
 
 }

@@ -77,14 +77,16 @@ class PublishSubscribersService @Inject()(
       workItem: WorkItem[PreferencesChangedRef]): Future[Result] = {
     logger.debug(s"processing workitem: $workItem")
 
-    val preferencesChanged = service.find(workItem.item.preferenceChangedId)
-    preferencesChanged.flatMap {
-      case Right(pc) =>
-        execute(pc, workItem)
-      case Left(msg) =>
-        audit(workItem, msg)
-        Future.successful(Result(s"$msg ${acc.message}"))
-    }
+    service
+      .find(workItem.item.preferenceChangedId)
+      .flatMap {
+        case Right(pc) =>
+          val res = execute(pc, workItem)
+          res.map(r => Result(s"${r.message}\n${acc.message}"))
+        case Left(msg) =>
+          audit(workItem, msg)
+          Future.successful(Result(s"$msg ${acc.message}"))
+      }
   }
 
   private def execute(

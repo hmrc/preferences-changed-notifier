@@ -16,7 +16,8 @@
 
 package uk.gov.hmrc.preferenceschangednotifier.controllers
 
-import org.scalatest.TestSuite
+import org.mongodb.scala.model.Filters
+import org.scalatest.{BeforeAndAfterEach, Suite, TestSuite}
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers.convertToAnyMustWrapper
@@ -29,6 +30,8 @@ import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.Json
 import play.api.test.Helpers.{CONTENT_TYPE, contentAsString, defaultAwaitTimeout, status}
 import play.api.test.{FakeHeaders, FakeRequest, Injecting}
+import uk.gov.hmrc.mongo.test.MongoSupport
+import uk.gov.hmrc.preferenceschangednotifier.repository.{PreferencesChangedRepository, PreferencesChangedWorkItemRepository}
 
 import scala.concurrent.ExecutionContext
 
@@ -39,7 +42,9 @@ class PreferencesChangedControllerISpec
     with GuiceOneServerPerSuite
     with ScalaFutures
     with IntegrationPatience
-    with Injecting {
+    with MongoSupport
+    with BeforeAndAfterEach
+    with Injecting { this: Suite =>
 
   implicit val ec: ExecutionContext = ExecutionContext.Implicits.global
 
@@ -48,18 +53,33 @@ class PreferencesChangedControllerISpec
     .build()
   
   private val controller = inject[PreferencesChangedController]
+  private val repo       = inject[PreferencesChangedRepository]
+  private val wiRepo     = inject[PreferencesChangedWorkItemRepository]
 
-  private def createFakePostRequest(reqBody: String) =
+  override protected def beforeEach(): Unit = {
+    repo.collection.deleteMany(Filters.empty()).toFuture().futureValue
+    wiRepo.collection.deleteMany(Filters.empty()).toFuture().futureValue
+    dropDatabase()
+    super.beforeEach()
+  }
+  private def createFakePostRequest(reqBody: String, subscribeUps: Boolean) = {
+    val headers: (String,String) = if (subscribeUps) {
+      "X-SUBSCRIBE-UPS" -> "true"
+    } else {
+      "X-SUBSCRIBE-UPS" -> "false"
+    }
+    
     FakeRequest(
       "POST",
       routes.PreferencesChangedController.preferencesChanged().url,
-      FakeHeaders(Seq(CONTENT_TYPE -> ContentTypes.JSON)),
+      FakeHeaders(Seq(CONTENT_TYPE -> ContentTypes.JSON, headers)),
       Json.parse(reqBody)
     )
+  }
 
   "POST /preferences-changed" - {
 
-    "return 200" in {
+    "return 200 for eps subscriber only" in {
       val reqBody =
         s"""{
            |  "changedValue" : "paper",
@@ -68,10 +88,35 @@ class PreferencesChangedControllerISpec
            |  "taxIds"       : { "nino" : "AB112233C", "sautr" : "abcde" }
            |}""".stripMargin
 
-      val fakePostRequest = createFakePostRequest(reqBody)
-      val result = controller.preferencesChanged()(fakePostRequest)
+      val fakePostRequest = createFakePostRequest(reqBody, subscribeUps = false)
+      val result = controller.preferencesChanged()(fakePostRequest).futureValue
+      result.header.status must be(OK)
       
-      status(result) must be(OK)
+      val repoCount   =   repo.collection.countDocuments().toFuture().futureValue
+      val wiRepoCount = wiRepo.collection.countDocuments().toFuture().futureValue
+      
+      repoCount must be(1)
+      wiRepoCount must be(1)
+    }
+
+    "return 200 for both subscribers" in {
+      val reqBody =
+        s"""{
+           |  "changedValue" : "paper",
+           |  "preferenceId" : "65263df8d843592d74a2bfc6",
+           |  "updatedAt"    : "2023-10-11T01:30:00.000Z",
+           |  "taxIds"       : { "nino" : "AB112233C", "sautr" : "abcde" }
+           |}""".stripMargin
+
+      val fakePostRequest = createFakePostRequest(reqBody, subscribeUps = true)
+      val result = controller.preferencesChanged()(fakePostRequest).futureValue
+      result.header.status must be(OK)
+      
+      val repoCount   =   repo.collection.countDocuments().toFuture().futureValue
+      val wiRepoCount = wiRepo.collection.countDocuments().toFuture().futureValue
+      
+      repoCount must be(1)
+      wiRepoCount must be(2)
     }
 
     "return 400 when the date is incorrectly formatted" in {
@@ -83,7 +128,7 @@ class PreferencesChangedControllerISpec
           |"taxIds"       : {"nino":"AB112233C"}
           |}""".stripMargin
 
-      val fakePostRequest = createFakePostRequest(reqBody)
+      val fakePostRequest = createFakePostRequest(reqBody, subscribeUps = true)
       val result = controller.preferencesChanged()(fakePostRequest)
       
       status(result) must be(BAD_REQUEST)
@@ -105,7 +150,7 @@ class PreferencesChangedControllerISpec
           |  "taxIds"       : {"nino":"AB112233C"}
           |}""".stripMargin
 
-      val fakePostRequest = createFakePostRequest(reqBody)
+      val fakePostRequest = createFakePostRequest(reqBody, subscribeUps = true)
       val result = controller.preferencesChanged()(fakePostRequest)
 
       status(result) must be(BAD_REQUEST)

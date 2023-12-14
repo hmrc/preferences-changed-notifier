@@ -18,7 +18,6 @@ package uk.gov.hmrc.preferenceschangednotifier.service
 
 
 import org.mongodb.scala.bson.ObjectId
-import org.mongodb.scala.model.Filters
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
@@ -62,6 +61,8 @@ class PublishSubscribersServiceISpec
   
   val subscribers : Seq[Subscriber] = Seq(connector)
 
+  val EpsSubscriber: String = "EpsHodsAdapter"
+  val UpsSubscriber: String = "UpdatedPrintSuppressions"
 
   override def beforeEach(): Unit = {
     pcRepo.collection.drop().toFuture().futureValue
@@ -69,16 +70,49 @@ class PublishSubscribersServiceISpec
     super.beforeEach()
   }
   
-  private def createPcr(preferenceChangedId: ObjectId, preferenceId: ObjectId) = {
+  private def createPcr(preferenceChangedId: ObjectId, preferenceId: ObjectId, subscriber: String) = {
     PreferencesChangedRef(
       preferenceChangedId = preferenceChangedId,
       preferenceId        = preferenceId,
-      subscriber          = "EpsHodsAdapterConnector")
+      subscriber          = subscriber)
   }
   
   "publish subscribers service" - {
 
-    "should process the workitem" in {
+    "should process the workitem for both subscribers" in {
+      // push an item into the pc repo
+      val prefId = new ObjectId()
+
+      val pc = PreferencesChanged(
+        _id = new ObjectId,
+        changedValue = Paper,
+        preferenceId = prefId,
+        updatedAt = Instant.now(),
+        taxIds = Map("nino" -> "YY000200A", "sautr" -> "SAUTR1"))
+
+      val preferenceChangedRes = pcRepo.upsert(pc).futureValue
+      val pcrEps = createPcr(preferenceChangedRes._id, prefId, EpsSubscriber)
+      val pcrUps = createPcr(preferenceChangedRes._id, prefId, UpsSubscriber)
+
+      val wi1 = pcwiRepo.pushUpdated(pcrEps).futureValue
+      val wi2 = pcwiRepo.pushUpdated(pcrUps).futureValue
+
+      val countItems =
+        pcwiRepo.collection.countDocuments().toFuture().futureValue
+
+      countItems must be(2)
+
+      val result = service.execute.futureValue
+      result.message must include(s"Completed & deleted workitem: ${wi1.id} successfully: HttpResponse status=200")
+      result.message must include(s"Completed & deleted workitem: ${wi2.id} successfully: HttpResponse status=200")
+
+      val postExecuteCount =
+        pcwiRepo.collection.countDocuments().toFuture().futureValue
+      postExecuteCount must be(0)
+    }
+
+    
+    "should receive 400 for missing SaUtr" in {
       // push an item into the pc repo
       val prefId= new ObjectId()
       
@@ -90,16 +124,27 @@ class PublishSubscribersServiceISpec
         taxIds = Map("nino" -> "YY000200A"))
 
       val preferenceChangedRes = pcRepo.upsert(pc).futureValue
-      val pcr  = createPcr(preferenceChangedRes._id, prefId)
+      val pcrEps = createPcr(preferenceChangedRes._id, prefId, EpsSubscriber)
+      val pcrUps = createPcr(preferenceChangedRes._id, prefId, UpsSubscriber)
       
-      val wi = pcwiRepo.pushUpdated(pcr).futureValue
+      val wi1 = pcwiRepo.pushUpdated(pcrEps).futureValue
+      val _   = pcwiRepo.pushUpdated(pcrUps).futureValue
+      
+      val countItems =
+        pcwiRepo.collection.countDocuments().toFuture().futureValue
+
+      countItems must be(2)
 
       val result = service.execute.futureValue
-      result.message must include(s"Completed & deleted workitem: ${wi.id} successfully: HttpResponse status=200")
+      
+      result.message must include(s"Completed & deleted workitem: ${wi1.id} successfully: HttpResponse status=200")
+      result.message must include(s"permanently failed")
+      result.message must include(s"Missing SaUtr")
 
-      val items =
-        pcwiRepo.collection.find(filter = Filters.equal("_id", wi.id)).toFuture().futureValue
-      items.size must be(0)
+      // There will be one item left which did not get processed successfully
+      val postExecuteCount =
+        pcwiRepo.collection.countDocuments().toFuture().futureValue
+      postExecuteCount must be(1)
     }
   }
 }

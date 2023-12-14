@@ -16,13 +16,36 @@
 
 package uk.gov.hmrc.preferenceschangednotifier.connectors
 
-import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, UpstreamErrorResponse}
+import uk.gov.hmrc.http.{
+  HeaderCarrier,
+  HttpClient,
+  HttpResponse,
+  UpstreamErrorResponse
+}
 import uk.gov.hmrc.preferenceschangednotifier.model.NotifySubscriberRequest
+import uk.gov.hmrc.http.HttpReads.Implicits._
+import scala.concurrent.ExecutionContext
 
+import java.util.UUID
 import scala.concurrent.Future
 
 trait Subscriber {
+  val name: String
+
+  protected val httpClient: HttpClient
+  protected def url: String
+
   def notifySubscriber(request: NotifySubscriberRequest)(
-      implicit hc: HeaderCarrier
-  ): Future[Either[UpstreamErrorResponse, HttpResponse]]
+      implicit hc: HeaderCarrier,
+      ex: ExecutionContext)
+    : Future[Either[UpstreamErrorResponse, HttpResponse]] = {
+
+    httpClient
+      .POST[NotifySubscriberRequest,
+            Either[UpstreamErrorResponse, HttpResponse]](
+        url,
+        request,
+        Seq("CorrelationId" -> UUID.randomUUID().toString)
+      )
+  }
 }

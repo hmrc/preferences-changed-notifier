@@ -25,6 +25,10 @@ import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers.{convertToAnyMustWrapper, equal}
 import uk.gov.hmrc.mongo.workitem.ProcessingStatus.ToDo
 import uk.gov.hmrc.mongo.workitem.WorkItem
+import uk.gov.hmrc.preferenceschangednotifier.connectors.{
+  EpsHodsAdapterConnector,
+  UpdatedPrintSuppressionsConnector
+}
 import uk.gov.hmrc.preferenceschangednotifier.controllers.model.PreferencesChangedRequest
 import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat.{
   Digital,
@@ -53,11 +57,18 @@ class PreferencesChangedServiceSpec
 
   var repo = mock[PreferencesChangedRepository]
   var workItemRepo = mock[PreferencesChangedWorkItemRepository]
+  var epsConnector = mock[EpsHodsAdapterConnector]
+  var upsConnector = mock[UpdatedPrintSuppressionsConnector]
+  var subscribers = Seq(epsConnector, upsConnector)
 
-  val svc = new PreferencesChangedService(repo, workItemRepo)
+  when(epsConnector.name).thenReturn("EpsHodsAdapter")
+  when(upsConnector.name).thenReturn("UpdatedPrintSuppressions")
+
+  val svc = new PreferencesChangedService(repo, workItemRepo, subscribers)
 
   override def beforeEach(): Unit = {
     reset(repo)
+    reset(workItemRepo)
   }
 
   "Preferences changed service" - {
@@ -97,7 +108,8 @@ class PreferencesChangedServiceSpec
         Instant.now,
         taxIds = Map.empty
       )
-      val result = svc.preferenceChanged(pcr).value.futureValue
+      val result =
+        svc.preferenceChanged(pcr, updateUPS = true).value.futureValue
 
       result must equal(Right(()))
       verify(repo, times(1)).upsert(any[PreferencesChanged])
@@ -126,6 +138,19 @@ class PreferencesChangedServiceSpec
       when(repo.upsert(any[PreferencesChanged]))
         .thenReturn(Future.successful(pc2))
 
+      val pcr1 =
+        PreferencesChangedRef(pc1._id, pc1.preferenceId, "EpsHodsAdapter")
+      when(workItemRepo.pushUpdated(any[PreferencesChangedRef]))
+        .thenReturn(
+          Future.successful(
+            WorkItem(item = pcr1,
+                     id = new ObjectId(),
+                     receivedAt = Instant.now(),
+                     updatedAt = Instant.now(),
+                     availableAt = Instant.now(),
+                     status = ToDo,
+                     failureCount = 0)))
+
       val pcr = PreferencesChangedRequest(
         changedValue = Digital,
         preferenceId = pc1.preferenceId.toString,
@@ -133,11 +158,57 @@ class PreferencesChangedServiceSpec
         taxIds = Map.empty
       )
 
-      val result = svc.preferenceChanged(pcr).value.futureValue
+      val result =
+        svc.preferenceChanged(pcr, updateUPS = true).value.futureValue
       result must equal(Right(()))
-      val result2 = svc.preferenceChanged(pcr).value.futureValue
+
+      val result2 =
+        svc.preferenceChanged(pcr, updateUPS = true).value.futureValue
       result2 must equal(Right(()))
+
       verify(repo, times(2)).upsert(any[PreferencesChanged])
+      verify(workItemRepo, times(4)).pushUpdated(any[PreferencesChangedRef])
+    }
+
+    "adds only a single workitem is updateUPS is false" in {
+      val pc = PreferencesChanged(
+        _id = new ObjectId("65259498e6baf61da75dceef"),
+        changedValue = Paper,
+        preferenceId = new ObjectId("75259498e6baf61da75dceef"),
+        updatedAt = Instant.now(),
+        Map.empty
+      )
+
+      when(repo.upsert(any[PreferencesChanged]))
+        .thenReturn(Future.successful(pc))
+
+      val pcr = PreferencesChangedRequest(
+        changedValue = Digital,
+        preferenceId = pc.preferenceId.toString,
+        Instant.now,
+        taxIds = Map.empty
+      )
+
+      val pcref =
+        PreferencesChangedRef(pc._id, pc.preferenceId, "EpsHodsAdapter")
+      when(workItemRepo.pushUpdated(any[PreferencesChangedRef]))
+        .thenReturn(
+          Future.successful(
+            WorkItem(item = pcref,
+                     id = new ObjectId(),
+                     receivedAt = Instant.now(),
+                     updatedAt = Instant.now(),
+                     availableAt = Instant.now(),
+                     status = ToDo,
+                     failureCount = 0)))
+
+      val result =
+        svc.preferenceChanged(pcr, updateUPS = false).value.futureValue
+      result must equal(Right(()))
+
+      verify(workItemRepo, times(1)).pushUpdated(any[PreferencesChangedRef])
+      verify(workItemRepo, times(1))
+        .pushUpdated(any[PreferencesChangedRef]) // UPS is false
     }
 
     "fails adding an item to the repo" in {
@@ -150,7 +221,8 @@ class PreferencesChangedServiceSpec
         Instant.now,
         taxIds = Map.empty
       )
-      val result = svc.preferenceChanged(pcr).value.futureValue
+      val result =
+        svc.preferenceChanged(pcr, updateUPS = true).value.futureValue
 
       result must equal(
         Left(PersistenceError("java.lang.RuntimeException: oops")))
@@ -168,7 +240,8 @@ class PreferencesChangedServiceSpec
         Instant.now,
         taxIds = Map.empty
       )
-      val result = svc.preferenceChanged(pcr).value.futureValue
+      val result =
+        svc.preferenceChanged(pcr, updateUPS = true).value.futureValue
 
       result must equal(
         Left(PersistenceError("java.lang.RuntimeException: whoa!")))
@@ -185,7 +258,8 @@ class PreferencesChangedServiceSpec
                                           Instant.now,
                                           Map.empty)
 
-      val result = svc.preferenceChanged(pcr).value.futureValue
+      val result =
+        svc.preferenceChanged(pcr, updateUPS = true).value.futureValue
 
       result must equal(
         Left(PersistenceError("java.lang.RuntimeException: whoa, throwing!")))
