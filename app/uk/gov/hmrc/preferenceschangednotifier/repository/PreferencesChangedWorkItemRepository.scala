@@ -55,6 +55,10 @@ class PreferencesChangedWorkItemRepository @Inject()(
       workItemFields = WorkItemFields.default,
       extraIndexes = Seq(
         IndexModel(
+          ascending("item.entityId"),
+          IndexOptions().unique(false).background(true)
+        ),
+        IndexModel(
           ascending("item.preferenceId"),
           IndexOptions().unique(false).background(true)
         ),
@@ -101,7 +105,7 @@ class PreferencesChangedWorkItemRepository @Inject()(
 
   private def workItemFilter(preferencesChangedRef: PreferencesChangedRef) = {
     Filters.and(
-      Filters.eq("item.preferenceId", preferencesChangedRef.preferenceId),
+      Filters.eq("item.entityId", preferencesChangedRef.entityId),
       Filters.eq("item.subscriber", preferencesChangedRef.subscriber),
       Filters.eq("status", ProcessingStatus.ToDo.name)
     )

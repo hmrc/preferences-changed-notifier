@@ -33,6 +33,7 @@ import play.api.test.{FakeHeaders, FakeRequest, Injecting}
 import uk.gov.hmrc.mongo.test.MongoSupport
 import uk.gov.hmrc.preferenceschangednotifier.repository.{PreferencesChangedRepository, PreferencesChangedWorkItemRepository}
 
+import java.util.UUID
 import scala.concurrent.ExecutionContext
 
 class PreferencesChangedControllerISpec
@@ -78,12 +79,14 @@ class PreferencesChangedControllerISpec
   }
 
   "POST /preferences-changed" - {
+    val entityId = UUID.randomUUID().toString
 
     "return 200 for eps subscriber only" in {
       val reqBody =
         s"""{
            |  "changedValue" : "paper",
            |  "preferenceId" : "65263df8d843592d74a2bfc6",
+           |  "entityId"     : "$entityId",
            |  "updatedAt"    : "2023-10-11T01:30:00.000Z",
            |  "taxIds"       : { "nino" : "AB112233C", "sautr" : "abcde" }
            |}""".stripMargin
@@ -104,6 +107,7 @@ class PreferencesChangedControllerISpec
         s"""{
            |  "changedValue" : "paper",
            |  "preferenceId" : "65263df8d843592d74a2bfc6",
+           |  "entityId"     : "$entityId",
            |  "updatedAt"    : "2023-10-11T01:30:00.000Z",
            |  "taxIds"       : { "nino" : "AB112233C", "sautr" : "abcde" }
            |}""".stripMargin
@@ -121,9 +125,10 @@ class PreferencesChangedControllerISpec
 
     "return 400 when the date is incorrectly formatted" in {
       val reqBody =
-        """{
+        s"""{
           |"changedValue" : "paper",
           |"preferenceId" : "65263df8d843592d74a2bfc6",
+          |"entityId"     : "$entityId",
           |"updatedAt"    : "023-10-11T01:30:00.000Z",
           |"taxIds"       : {"nino":"AB112233C"}
           |}""".stripMargin
@@ -143,9 +148,10 @@ class PreferencesChangedControllerISpec
 
     "return 400 when the objectid is incorrectly formatted" in {
       val reqBody =
-        """{
+        s"""{
           |  "changedValue" : "paper",
           |  "preferenceId" : "5555",
+          |  "entityId"     : "$entityId",
           |  "updatedAt"    : "2023-10-11T01:30:00.000Z",
           |  "taxIds"       : {"nino":"AB112233C"}
           |}""".stripMargin

@@ -33,6 +33,7 @@ import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat.{
 import uk.gov.hmrc.preferenceschangednotifier.model.PreferencesChanged
 
 import java.time.Instant
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 import scala.concurrent.ExecutionContext
 
@@ -65,10 +66,10 @@ class PreferencesChangedRepositorySpec
     "test indexes" in {
       val indexes: Seq[model.IndexModel] = repository.indexes
 
-      val maybePreferenceIdIndexModel =
-        indexes.find(i => i.getKeys.toBsonDocument.get("preferenceId") != null)
+      val maybeEntityIdIndexModel =
+        indexes.find(i => i.getKeys.toBsonDocument.get("entityId") != null)
 
-      maybePreferenceIdIndexModel.get.getOptions.isUnique must be(true)
+      maybeEntityIdIndexModel.isDefined must be(true)
 
       val maybeUpdatedAtIndexModel =
         indexes.find(i => i.getKeys.toBsonDocument.get("updatedAt") != null)
@@ -78,7 +79,9 @@ class PreferencesChangedRepositorySpec
     }
 
     "inserts correctly" in {
+      val entityId = UUID.randomUUID().toString
       val a = PreferencesChanged(_id = new ObjectId(),
+                                 entityId,
                                  Paper,
                                  new ObjectId(),
                                  Instant.now(),
@@ -90,8 +93,10 @@ class PreferencesChangedRepositorySpec
     "upserts by preferenceId correctly" in {
       val preferenceId = new ObjectId()
       val objectId = new ObjectId()
+      val entityId = UUID.randomUUID().toString
 
       val a = PreferencesChanged(_id = objectId,
+                                 entityId,
                                  Paper,
                                  preferenceId,
                                  Instant.now(),
@@ -100,6 +105,7 @@ class PreferencesChangedRepositorySpec
       r1.wasAcknowledged() mustEqual (true)
 
       val b = PreferencesChanged(_id = new ObjectId(),
+                                 entityId,
                                  Digital,
                                  preferenceId,
                                  Instant.now(),
@@ -109,7 +115,7 @@ class PreferencesChangedRepositorySpec
 
       val item = repository.collection
         .find(
-          filter = Filters.eq("preferenceId", preferenceId)
+          filter = Filters.eq("entityId", entityId)
         )
         .toSingle()
         .toFuture()
@@ -120,12 +126,15 @@ class PreferencesChangedRepositorySpec
 
     "inserts two separate new objects correctly" in {
       val preferenceId1 = new ObjectId()
+      val entityId1 = UUID.randomUUID().toString
       val preferenceId2 = new ObjectId()
+      val entityId2 = UUID.randomUUID().toString
 
       val objectId1 = new ObjectId()
       val objectId2 = new ObjectId()
 
       val a = PreferencesChanged(_id = objectId1,
+                                 entityId1,
                                  Paper,
                                  preferenceId1,
                                  Instant.now(),
@@ -136,6 +145,7 @@ class PreferencesChangedRepositorySpec
       r1.wasAcknowledged() mustEqual (true)
 
       val b = PreferencesChanged(_id = objectId2,
+                                 entityId2,
                                  Digital,
                                  preferenceId2,
                                  Instant.now(),
@@ -146,13 +156,13 @@ class PreferencesChangedRepositorySpec
 
       val item = repository.collection
         .find(
-          filter = Filters.eq("preferenceId", preferenceId1)
+          filter = Filters.eq("entityId", entityId1)
         )
         .toSingle()
         .toFuture()
         .futureValue
       item.changedValue mustEqual (Paper)
-      item._id must be(objectId1)
+      item.entityId must be(entityId1)
     }
   }
 

@@ -24,6 +24,7 @@ import java.time.Instant
 case class PreferencesChangedRequest(
     changedValue: MessageDeliveryFormat,
     preferenceId: String,
+    entityId: String,
     updatedAt: Instant,
     taxIds: Map[String, String]
 )

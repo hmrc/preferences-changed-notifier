@@ -29,6 +29,7 @@ import uk.gov.hmrc.preferenceschangednotifier.controllers.model.PreferencesChang
 import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat.Paper
 
 import java.time.Instant
+import java.util.UUID
 
 /**
   * Test that the case class formatting is correct for Mongo
@@ -37,10 +38,12 @@ class PreferencesChangedSpec extends AnyFreeSpec {
   spec =>
 
   "Preferences changed json writes" - {
+    val entityId = UUID.randomUUID().toString
 
     "MessageDeliveryFormat format correctly" in {
       val a = PreferencesChanged(
         _id = new ObjectId(),
+        entityId = entityId,
         changedValue = Paper,
         preferenceId = new ObjectId(),
         updatedAt = Instant.now(),
@@ -59,6 +62,7 @@ class PreferencesChangedSpec extends AnyFreeSpec {
       val now = Instant.now()
       val a = PreferencesChanged(
         _id = new ObjectId(),
+        entityId = entityId,
         changedValue = Paper,
         preferenceId = new ObjectId(),
         updatedAt = now,
@@ -80,6 +84,7 @@ class PreferencesChangedSpec extends AnyFreeSpec {
       val preferenceId = new ObjectId()
       val a = PreferencesChanged(
         _id = new ObjectId(),
+        entityId = entityId,
         changedValue = Paper,
         preferenceId = preferenceId,
         updatedAt = Instant.now(),
@@ -98,6 +103,7 @@ class PreferencesChangedSpec extends AnyFreeSpec {
     "taxIds format correctly" in {
       val a = PreferencesChanged(
         _id = new ObjectId(),
+        entityId = entityId,
         changedValue = Paper,
         preferenceId = new ObjectId(),
         updatedAt = Instant.now(),
@@ -116,12 +122,14 @@ class PreferencesChangedSpec extends AnyFreeSpec {
   }
 
   "convert from PreferencesChangedRequest" - {
+    val entityId = UUID.randomUUID().toString
 
     "check preferenceId" in {
       val pid = new ObjectId()
       val req = PreferencesChangedRequest(
         changedValue = Paper,
         preferenceId = pid.toString,
+        entityId = entityId,
         updatedAt = Instant.now(),
         taxIds = Map.empty
       )
@@ -133,6 +141,7 @@ class PreferencesChangedSpec extends AnyFreeSpec {
       val req = PreferencesChangedRequest(
         changedValue = Paper,
         preferenceId = "111",
+        entityId = entityId,
         updatedAt = Instant.now(),
         taxIds = Map.empty
       )
@@ -146,6 +155,7 @@ class PreferencesChangedSpec extends AnyFreeSpec {
       val req = PreferencesChangedRequest(
         changedValue = Paper,
         preferenceId = new ObjectId().toString,
+        entityId = entityId,
         updatedAt = Instant.now(),
         taxIds = Map("taxId1" -> "1234")
       )

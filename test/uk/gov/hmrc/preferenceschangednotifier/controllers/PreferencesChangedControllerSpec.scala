@@ -35,6 +35,7 @@ import uk.gov.hmrc.preferenceschangednotifier.service.PreferencesChangedService
 import uk.gov.hmrc.preferenceschangednotifier.model.ServerError
 
 import java.time.Instant
+import java.util.UUID
 import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.global
 
@@ -64,6 +65,7 @@ class PreferencesChangedControllerSpec extends AnyFreeSpec with Matchers {
         s"""{
            |  "changedValue" : "paper",
            |  "preferenceId" : "${new ObjectId().toString}",
+           |  "entityId"     : "${UUID.randomUUID().toString}",
            |  "updatedAt"    : "${Instant.now()}",
            |  "taxIds"       : { "nino" : "AB112233C", "sautr" : "abcde" }
            |}""".stripMargin
@@ -81,11 +83,12 @@ class PreferencesChangedControllerSpec extends AnyFreeSpec with Matchers {
 
     "return 400 with a badly formatted date" in {
       val reqBody =
-        """{
-          |"changedValue":"paper",
-          |"preferenceId":"5555",
-          |"updatedAt":"023-10-11T01:30:00.000Z",
-          |"taxIds":{"nino":"AB112233C"}
+        s"""{
+          |"changedValue": "paper",
+          |"preferenceId": "5555",
+          |"entityId"    : "${UUID.randomUUID().toString}",
+          |"updatedAt"   : "023-10-11T01:30:00.000Z",
+          |"taxIds"      : {"nino":"AB112233C"}
           |}""".stripMargin
 
       val fakePostRequest =
@@ -108,6 +111,7 @@ class PreferencesChangedControllerSpec extends AnyFreeSpec with Matchers {
         s"""{
             |  "changedValue" : "paper",
             |  "preferenceId" : "${pid.toString}",
+            |  "entityId"     : "${UUID.randomUUID().toString}",
             |  "updatedAt"    : "2023-10-11T09:30:00.000Z",
             |  "taxIds"       : { "nino" : "AB112233C" }
             |}
@@ -130,6 +134,7 @@ class PreferencesChangedControllerSpec extends AnyFreeSpec with Matchers {
         s"""{
            |  "changedValue" : "paper",
            |  "preferenceId" : "${new ObjectId().toString}",
+           |  "entityId"     : "${UUID.randomUUID().toString}",
            |  "updatedAt"    : "${Instant.now()}",
            |  "taxIds"       : { "nino" : "AB112233C", "sautr" : "abcde" }
            |}""".stripMargin
@@ -150,6 +155,7 @@ class PreferencesChangedControllerSpec extends AnyFreeSpec with Matchers {
         s"""{
            |  "changedValue" : "paper",
            |  "preferenceId" : "${new ObjectId().toString}",
+           |  "entityId"     : "${UUID.randomUUID().toString}",
            |  "updatedAt"    : "${Instant.now()}",
            |  "taxIds"       : { "nino" : "AB112233C", "sautr" : "abcde" }
            |}""".stripMargin

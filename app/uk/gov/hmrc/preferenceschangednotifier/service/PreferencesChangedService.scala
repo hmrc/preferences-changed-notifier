@@ -83,6 +83,7 @@ class PreferencesChangedService @Inject()(
       res <- EitherT(
         addPreferenceChangedWorkItems(pcId,
                                       new ObjectId(pcRequest.preferenceId),
+                                      pcRequest.entityId,
                                       updateUPS))
     } yield res
 
@@ -129,6 +130,7 @@ class PreferencesChangedService @Inject()(
   private def addPreferenceChangedWorkItems(
       pcId: ObjectId,
       pId: ObjectId,
+      entityId: String,
       updateUPS: Boolean): Future[Either[ErrorResponse, Unit]] = {
 
     Future
@@ -136,7 +138,7 @@ class PreferencesChangedService @Inject()(
         filterSubscribers(updateUPS).map { s =>
           pcWorkItemRepo
             .pushUpdated(
-              PreferencesChangedRef(pcId, pId, s.name)
+              PreferencesChangedRef(pcId, pId, entityId, s.name)
             )
             .map(_ => Right(()))
             .recover { ex =>

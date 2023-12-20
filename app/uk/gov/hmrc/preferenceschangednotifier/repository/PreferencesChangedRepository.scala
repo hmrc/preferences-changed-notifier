@@ -52,8 +52,7 @@ class PreferencesChangedRepository @Inject()(
       domainFormat = PreferencesChanged.format,
       indexes = List(
         IndexModel(
-          Indexes.ascending("preferenceId"),
-          IndexOptions().unique(true)
+          Indexes.ascending("entityId")
         ),
         IndexModel(
           Indexes.ascending("updatedAt"),
@@ -73,7 +72,7 @@ class PreferencesChangedRepository @Inject()(
   def upsert(item: PreferencesChanged): Future[PreferencesChanged] =
     collection
       .findOneAndUpdate(
-        filter = Filters.eq("preferenceId", item.preferenceId),
+        filter = Filters.eq("entityId", item.entityId),
         update = updates(item),
         options = FindOneAndUpdateOptions().upsert(true).returnDocument(AFTER)
       )
@@ -90,8 +89,9 @@ class PreferencesChangedRepository @Inject()(
       Updates.set("changedValue", item.changedValue.name),
       Updates.set("updatedAt", item.updatedAt),
       Updates.set("taxIds", item.taxIds),
+      Updates.set("preferenceId", item.preferenceId),
       // for new documents only, need to specify the doc id and pref id
       Updates.setOnInsert("_id", item._id),
-      Updates.setOnInsert("preferenceId", item.preferenceId)
+      Updates.setOnInsert("entityId", item.entityId)
     )
 }

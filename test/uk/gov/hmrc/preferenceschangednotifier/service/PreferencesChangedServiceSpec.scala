@@ -45,6 +45,7 @@ import uk.gov.hmrc.preferenceschangednotifier.repository.{
 }
 
 import java.time.Instant
+import java.util.UUID
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -72,6 +73,7 @@ class PreferencesChangedServiceSpec
   }
 
   "Preferences changed service" - {
+    val entityId = UUID.randomUUID().toString
 
     "should correctly add an item to the repo" in {
       val pId = new ObjectId("75259498e6baf61da75dceef")
@@ -81,6 +83,7 @@ class PreferencesChangedServiceSpec
         .thenReturn(
           Future.successful(
             PreferencesChanged(_id = pcId,
+                               entityId,
                                changedValue = Paper,
                                preferenceId = pId,
                                updatedAt = Instant.now(),
@@ -97,7 +100,8 @@ class PreferencesChangedServiceSpec
               availableAt = Instant.now,
               status = ToDo,
               failureCount = 0,
-              item = PreferencesChangedRef(pcId, pId, "EpsHodsAdapter")
+              item =
+                PreferencesChangedRef(pcId, pId, entityId, "EpsHodsAdapter")
             )
           )
         )
@@ -105,6 +109,7 @@ class PreferencesChangedServiceSpec
       val pcr = PreferencesChangedRequest(
         changedValue = Paper,
         new ObjectId().toString,
+        entityId,
         Instant.now,
         taxIds = Map.empty
       )
@@ -118,6 +123,7 @@ class PreferencesChangedServiceSpec
     "successfully overwrites duplicate" in {
       val pc1 = PreferencesChanged(
         _id = new ObjectId("65259498e6baf61da75dceef"),
+        entityId,
         changedValue = Paper,
         preferenceId = new ObjectId("75259498e6baf61da75dceef"),
         updatedAt = Instant.now(),
@@ -129,6 +135,7 @@ class PreferencesChangedServiceSpec
 
       val pc2 = PreferencesChanged(
         _id = new ObjectId("65259498e6baf61da75dceef"),
+        entityId,
         changedValue = Digital,
         preferenceId = new ObjectId("75259498e6baf61da75dceef"),
         updatedAt = Instant.now(),
@@ -139,7 +146,10 @@ class PreferencesChangedServiceSpec
         .thenReturn(Future.successful(pc2))
 
       val pcr1 =
-        PreferencesChangedRef(pc1._id, pc1.preferenceId, "EpsHodsAdapter")
+        PreferencesChangedRef(pc1._id,
+                              pc1.preferenceId,
+                              entityId,
+                              "EpsHodsAdapter")
       when(workItemRepo.pushUpdated(any[PreferencesChangedRef]))
         .thenReturn(
           Future.successful(
@@ -154,6 +164,7 @@ class PreferencesChangedServiceSpec
       val pcr = PreferencesChangedRequest(
         changedValue = Digital,
         preferenceId = pc1.preferenceId.toString,
+        entityId,
         Instant.now,
         taxIds = Map.empty
       )
@@ -173,6 +184,7 @@ class PreferencesChangedServiceSpec
     "adds only a single workitem is updateUPS is false" in {
       val pc = PreferencesChanged(
         _id = new ObjectId("65259498e6baf61da75dceef"),
+        entityId,
         changedValue = Paper,
         preferenceId = new ObjectId("75259498e6baf61da75dceef"),
         updatedAt = Instant.now(),
@@ -185,12 +197,16 @@ class PreferencesChangedServiceSpec
       val pcr = PreferencesChangedRequest(
         changedValue = Digital,
         preferenceId = pc.preferenceId.toString,
+        entityId,
         Instant.now,
         taxIds = Map.empty
       )
 
       val pcref =
-        PreferencesChangedRef(pc._id, pc.preferenceId, "EpsHodsAdapter")
+        PreferencesChangedRef(pc._id,
+                              pc.preferenceId,
+                              entityId,
+                              "EpsHodsAdapter")
       when(workItemRepo.pushUpdated(any[PreferencesChangedRef]))
         .thenReturn(
           Future.successful(
@@ -218,6 +234,7 @@ class PreferencesChangedServiceSpec
       val pcr = PreferencesChangedRequest(
         changedValue = Paper,
         new ObjectId("75259498e6baf61da75dceef").toString,
+        entityId,
         Instant.now,
         taxIds = Map.empty
       )
@@ -237,6 +254,7 @@ class PreferencesChangedServiceSpec
       val pcr = PreferencesChangedRequest(
         changedValue = Paper,
         new ObjectId().toString,
+        entityId,
         Instant.now,
         taxIds = Map.empty
       )
@@ -255,6 +273,7 @@ class PreferencesChangedServiceSpec
 
       val pcr = PreferencesChangedRequest(Paper,
                                           new ObjectId().toString,
+                                          entityId,
                                           Instant.now,
                                           Map.empty)
 
