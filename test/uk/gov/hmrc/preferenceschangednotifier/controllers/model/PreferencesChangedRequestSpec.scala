@@ -22,6 +22,7 @@ import play.api.libs.json.Json
 import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat.Paper
 
 import java.time.Instant
+import java.util.UUID
 
 class PreferencesChangedRequestSpec extends AnyFreeSpec {
   spec =>
@@ -63,6 +64,7 @@ class PreferencesChangedRequestSpec extends AnyFreeSpec {
     Json.parse(s"""{
         |  "changedValue" : "$changedValue",
         |  "preferenceId" : "$preferenceId",
+        |  "entityId"     : "${UUID.randomUUID().toString}",
         |  "updatedAt"    : "$updatedAt",
         |  "taxIds"       :  $taxIds
         |}

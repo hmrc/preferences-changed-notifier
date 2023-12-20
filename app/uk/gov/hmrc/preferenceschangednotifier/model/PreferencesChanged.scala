@@ -31,8 +31,9 @@ import java.time.Instant
   */
 case class PreferencesChanged(
     _id: ObjectId,
+    entityId: String,
     changedValue: MessageDeliveryFormat,
-    preferenceId: ObjectId, // INDEX
+    preferenceId: ObjectId,
     updatedAt: Instant,
     taxIds: Map[String, String]
 )
@@ -43,6 +44,7 @@ object PreferencesChanged {
   def from(pcRequest: PreferencesChangedRequest): PreferencesChanged = {
     PreferencesChanged(
       _id = new ObjectId(),
+      entityId = pcRequest.entityId,
       changedValue = pcRequest.changedValue,
       preferenceId = new ObjectId(pcRequest.preferenceId),
       updatedAt = pcRequest.updatedAt,

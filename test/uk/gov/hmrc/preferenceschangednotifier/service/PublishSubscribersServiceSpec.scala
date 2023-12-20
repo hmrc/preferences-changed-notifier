@@ -43,6 +43,7 @@ import uk.gov.hmrc.preferenceschangednotifier.repository.{
 }
 
 import java.time.Instant
+import java.util.UUID
 
 class PublishSubscribersServiceSpec
     extends PlaySpec
@@ -131,19 +132,23 @@ class PublishSubscribersServiceSpec
   }
 
   private def createPcr(preferenceChangedId: ObjectId,
+                        entityId: String,
                         preferenceId: ObjectId) = {
     PreferencesChangedRef(preferenceChangedId = preferenceChangedId,
                           preferenceId = preferenceId,
+                          entityId = entityId,
                           subscriber = "EpsHodsAdapter")
   }
 
   class TestCase {
     // push an item into the pc repo
     val prefId = new ObjectId()
+    val entityId = UUID.randomUUID().toString
 
     val pc = PreferencesChanged(_id = new ObjectId(),
                                 changedValue = Paper,
                                 preferenceId = prefId,
+                                entityId = entityId,
                                 updatedAt = Instant.now(),
                                 taxIds = Map("nino" -> "AB112233C"))
 
@@ -151,7 +156,7 @@ class PublishSubscribersServiceSpec
     val preferenceChangedRes =
       pcRepo.upsert(pc).futureValue
 
-    val pcr = createPcr(preferenceChangedRes._id, prefId)
+    val pcr = createPcr(preferenceChangedRes._id, entityId, prefId)
 
     // insert a workitem
     val wi = pcwiRepo.pushUpdated(pcr).futureValue

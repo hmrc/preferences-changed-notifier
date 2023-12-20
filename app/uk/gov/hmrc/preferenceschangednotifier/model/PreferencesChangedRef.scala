@@ -22,7 +22,8 @@ import uk.gov.hmrc.mongo.play.json.formats.MongoFormats
 
 case class PreferencesChangedRef(
     preferenceChangedId: ObjectId, // reference to preferenceChanged._id
-    preferenceId: ObjectId, // INDEX
+    preferenceId: ObjectId,
+    entityId: String, // INDEX
     subscriber: String
 )
 

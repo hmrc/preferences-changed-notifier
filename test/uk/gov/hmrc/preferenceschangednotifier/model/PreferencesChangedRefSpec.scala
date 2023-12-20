@@ -21,6 +21,8 @@ import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers.convertToAnyMustWrapper
 import play.api.libs.json.Json
 
+import java.util.UUID
+
 class PreferencesChangedRefSpec extends AnyFreeSpec {
   spec =>
 
@@ -28,7 +30,11 @@ class PreferencesChangedRefSpec extends AnyFreeSpec {
 
     "preferencesChangedId ObjectId writes correctly" in {
       val preferenceChangedId = new ObjectId()
-      val a = PreferencesChangedRef(preferenceChangedId, new ObjectId(), "sub1")
+      val entityId = UUID.randomUUID().toString
+      val a = PreferencesChangedRef(preferenceChangedId,
+                                    new ObjectId(),
+                                    entityId,
+                                    "sub1")
 
       val writer = PreferencesChangedRef.writes
       val json = writer.writes(a)
@@ -39,7 +45,9 @@ class PreferencesChangedRefSpec extends AnyFreeSpec {
 
     "preferencesId ObjectId writes correctly" in {
       val preferenceId = new ObjectId()
-      val a = PreferencesChangedRef(new ObjectId(), preferenceId, "sub1")
+      val entityId = UUID.randomUUID().toString
+      val a =
+        PreferencesChangedRef(new ObjectId(), preferenceId, entityId, "sub1")
 
       val writer = PreferencesChangedRef.writes
       val json = writer.writes(a)
@@ -49,7 +57,9 @@ class PreferencesChangedRefSpec extends AnyFreeSpec {
     }
 
     "subscriber string writes correctly" in {
-      val a = PreferencesChangedRef(new ObjectId(), new ObjectId(), "sub1")
+      val entityId = UUID.randomUUID().toString
+      val a =
+        PreferencesChangedRef(new ObjectId(), new ObjectId(), entityId, "sub1")
 
       val writer = PreferencesChangedRef.writes
       val json = writer.writes(a)
@@ -63,11 +73,13 @@ class PreferencesChangedRefSpec extends AnyFreeSpec {
 
     "preferencesChangedId ObjectId reads correctly" in {
       val preferenceChangedId = new ObjectId()
+      val entityId = UUID.randomUUID().toString
 
       val strJson =
         s"""{
           |  "preferenceChangedId" : { "$$oid" : "${preferenceChangedId.toString}" },
           |  "preferenceId"        : { "$$oid" :  "${new ObjectId()}" },
+          |  "entityId"            : "$entityId",
           |  "subscriber"          : "sub1"
           |}""".stripMargin
 
@@ -78,11 +90,13 @@ class PreferencesChangedRefSpec extends AnyFreeSpec {
 
     "preferencesId ObjectId reads correctly" in {
       val preferenceId = new ObjectId()
+      val entityId = UUID.randomUUID().toString
 
       val strJson =
         s"""{
            |  "preferenceChangedId" : { "$$oid" : "${new ObjectId()}" },
            |  "preferenceId"        : { "$$oid" : "${preferenceId.toString}" },
+           |  "entityId"            : "$entityId",
            |  "subscriber"          : "sub1"
            |}""".stripMargin
 
@@ -92,10 +106,13 @@ class PreferencesChangedRefSpec extends AnyFreeSpec {
     }
 
     "subscriber string reads correctly" in {
+      val entityId = UUID.randomUUID().toString
+
       val strJson =
         s"""{
            |  "preferenceChangedId" : { "$$oid" : "${new ObjectId()}" },
            |  "preferenceId"        : { "$$oid" : "${new ObjectId()}" },
+           |  "entityId"            : "$entityId",
            |  "subscriber"          : "sub1"
            |}""".stripMargin
 

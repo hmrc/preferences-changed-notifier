@@ -33,6 +33,7 @@ import uk.gov.hmrc.preferenceschangednotifier.model.{PreferencesChanged, Prefere
 import uk.gov.hmrc.preferenceschangednotifier.repository.{PreferencesChangedRepository, PreferencesChangedWorkItemRepository}
 
 import java.time.Instant
+import java.util.UUID
 
 
 class PublishSubscribersServiceISpec
@@ -70,10 +71,11 @@ class PublishSubscribersServiceISpec
     super.beforeEach()
   }
   
-  private def createPcr(preferenceChangedId: ObjectId, preferenceId: ObjectId, subscriber: String) = {
+  private def createPcr(preferenceChangedId: ObjectId, preferenceId: ObjectId, entityId: String, subscriber: String) = {
     PreferencesChangedRef(
       preferenceChangedId = preferenceChangedId,
       preferenceId        = preferenceId,
+      entityId            = entityId,
       subscriber          = subscriber)
   }
   
@@ -82,17 +84,19 @@ class PublishSubscribersServiceISpec
     "should process the workitem for both subscribers" in {
       // push an item into the pc repo
       val prefId = new ObjectId()
+      val entityId = UUID.randomUUID().toString
 
       val pc = PreferencesChanged(
         _id = new ObjectId,
         changedValue = Paper,
         preferenceId = prefId,
+        entityId     = entityId,
         updatedAt = Instant.now(),
         taxIds = Map("nino" -> "YY000200A", "sautr" -> "SAUTR1"))
 
       val preferenceChangedRes = pcRepo.upsert(pc).futureValue
-      val pcrEps = createPcr(preferenceChangedRes._id, prefId, EpsSubscriber)
-      val pcrUps = createPcr(preferenceChangedRes._id, prefId, UpsSubscriber)
+      val pcrEps = createPcr(preferenceChangedRes._id, prefId, entityId, EpsSubscriber)
+      val pcrUps = createPcr(preferenceChangedRes._id, prefId, entityId, UpsSubscriber)
 
       val wi1 = pcwiRepo.pushUpdated(pcrEps).futureValue
       val wi2 = pcwiRepo.pushUpdated(pcrUps).futureValue
@@ -115,17 +119,19 @@ class PublishSubscribersServiceISpec
     "should receive 400 for missing SaUtr" in {
       // push an item into the pc repo
       val prefId= new ObjectId()
+      val entityId = UUID.randomUUID().toString
       
       val pc= PreferencesChanged(
         _id = new ObjectId,
+        entityId = entityId,
         changedValue = Paper,
         preferenceId = prefId,
         updatedAt = Instant.now(),
         taxIds = Map("nino" -> "YY000200A"))
 
       val preferenceChangedRes = pcRepo.upsert(pc).futureValue
-      val pcrEps = createPcr(preferenceChangedRes._id, prefId, EpsSubscriber)
-      val pcrUps = createPcr(preferenceChangedRes._id, prefId, UpsSubscriber)
+      val pcrEps = createPcr(preferenceChangedRes._id, prefId, entityId, EpsSubscriber)
+      val pcrUps = createPcr(preferenceChangedRes._id, prefId, entityId, UpsSubscriber)
       
       val wi1 = pcwiRepo.pushUpdated(pcrEps).futureValue
       val _   = pcwiRepo.pushUpdated(pcrUps).futureValue
