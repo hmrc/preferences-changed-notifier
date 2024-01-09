@@ -34,6 +34,7 @@ import java.util.concurrent.TimeUnit
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.duration.Duration
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success, Try}
 
 @Singleton
 class PublishSubscribersService @Inject()(
@@ -77,16 +78,22 @@ class PublishSubscribersService @Inject()(
       workItem: WorkItem[PreferencesChangedRef]): Future[Result] = {
     logger.debug(s"processing workitem: $workItem")
 
-    service
-      .find(workItem.item.preferenceChangedId)
-      .flatMap {
-        case Right(pc) =>
-          val res = execute(pc, workItem)
-          res.map(r => Result(s"${r.message}\n${acc.message}"))
-        case Left(msg) =>
-          audit(workItem, msg)
-          Future.successful(Result(s"$msg ${acc.message}"))
-      }
+    Try {
+      service
+        .find(workItem.item.preferenceChangedId)
+        .flatMap {
+          case Right(pc) =>
+            val res = execute(pc, workItem)
+            res.map(r => Result(s"${r.message}\n${acc.message}"))
+          case Left(msg) =>
+            audit(workItem, msg)
+            Future.successful(Result(s"$msg ${acc.message}"))
+        }
+    } match {
+      case Success(value) => value
+      case Failure(exception) =>
+        Future.successful(Result(s"${exception.getMessage}"))
+    }
   }
 
   private def execute(
