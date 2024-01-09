@@ -68,11 +68,23 @@ class PreferencesChangedService @Inject()(
           .cond(a.isDefined, a.get, s"_id ${preferenceChangedId} not found"))
 
   def pull(retryFailedAfter: Duration)
-    : Future[Option[WorkItem[PreferencesChangedRef]]] =
-    pcWorkItemRepo.pullOutstanding(
-      Instant.now().minus(retryFailedAfter.toSeconds, ChronoUnit.SECONDS),
-      Instant.now()
-    )
+    : Future[Option[WorkItem[PreferencesChangedRef]]] = {
+
+    pcWorkItemRepo
+      .pullOutstanding(
+        Instant.now().minus(retryFailedAfter.toSeconds, ChronoUnit.SECONDS),
+        Instant.now()
+      )
+      .recoverWith {
+        case ex: RuntimeException
+            if (ex.getMessage contains ("Failed to parse json as uk.gov.hmrc.mongo.workitem.WorkItem")) =>
+          logger.debug(s"Trying again $ex")
+          pull(retryFailedAfter)
+        case ex =>
+          logger.debug(s"Failed $ex")
+          throw ex
+      }
+  }
 
   def preferenceChanged(
       pcRequest: PreferencesChangedRequest,
