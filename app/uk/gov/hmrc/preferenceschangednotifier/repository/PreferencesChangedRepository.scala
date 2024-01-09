@@ -59,7 +59,8 @@ class PreferencesChangedRepository @Inject()(
           IndexOptions().expireAfter(config.get[Long]("preferencesChanged.ttl"),
                                      TimeUnit.DAYS)
         )
-      )
+      ),
+      replaceIndexes = true
     ) {
 
   private val logger: Logger = Logger(getClass)
