@@ -40,5 +40,5 @@ class UpdatedPrintSuppressionsConnector @Inject()(
   override def url: String = s"$baseUrl/preferences/notify-subscriber"
 
   override def taxIdsValid(taxIds: Map[String, String]): Boolean =
-    taxIds.contains(UpsTaxId) && taxIds.getOrElse(UpsTaxId, "") != ""
+    taxIds.getOrElse(UpsTaxId, "") != ""
 }

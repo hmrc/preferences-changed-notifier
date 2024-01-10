@@ -41,5 +41,5 @@ class EpsHodsAdapterConnector @Inject()(http: HttpClient,
     s"$baseUrl/eps-hods-adapter/preferences/notify-subscriber"
 
   override def taxIdsValid(taxIds: Map[String, String]): Boolean =
-    taxIds.contains(NpsTaxId) && taxIds.getOrElse(NpsTaxId, "") != ""
+    taxIds.getOrElse(NpsTaxId, "") != ""
 }
