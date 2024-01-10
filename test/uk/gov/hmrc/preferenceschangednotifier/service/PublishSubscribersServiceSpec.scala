@@ -44,6 +44,7 @@ import uk.gov.hmrc.preferenceschangednotifier.repository.{
 
 import java.time.Instant
 import java.util.UUID
+import scala.concurrent.ExecutionContext
 
 class PublishSubscribersServiceSpec
     extends PlaySpec
@@ -61,9 +62,14 @@ class PublishSubscribersServiceSpec
         "metrics.enabled" -> false,
         "microservice.services.eps-hods-adapter.host" -> "localhost",
         "microservice.services.eps-hods-adapter.port" -> "22222",
-        "featureFlag.useUPS" -> true
+        "microservice.services.updated-print-suppressions.host" -> "localhost",
+        "microservice.services.updated-print-suppressions.port" -> "33333",
+        "featureFlag.useUPS" -> false
       )
       .build()
+
+//  val system = ActorSystem("test")
+  implicit val executionContext = ExecutionContext.Implicits.global
 
   private val service = app.injector.instanceOf[PublishSubscribersService]
   private val pcRepo = app.injector.instanceOf[PreferencesChangedRepository]
@@ -86,7 +92,7 @@ class PublishSubscribersServiceSpec
       val result = service.execute.futureValue
 
       result.message must include(
-        s"Completed & deleted workitem: ${wi.id} successfully: HttpResponse status=200")
+        s"Completed & deleted workitem: ${wi1.id} successfully: HttpResponse status=200")
     }
 
     "return correctly when stub returns 4XX error" in new TestCase {
@@ -127,17 +133,18 @@ class PublishSubscribersServiceSpec
       private val result = service.execute.futureValue
 
       result.message must include(
-        s"Completed & deleted workitem: ${wi.id} successfully: HttpResponse status=${CREATED}")
+        s"Completed & deleted workitem: ${wi1.id} successfully: HttpResponse status=${CREATED}")
     }
   }
 
   private def createPcr(preferenceChangedId: ObjectId,
                         entityId: String,
-                        preferenceId: ObjectId) = {
+                        preferenceId: ObjectId,
+                        subscriber: String) = {
     PreferencesChangedRef(preferenceChangedId = preferenceChangedId,
                           preferenceId = preferenceId,
                           entityId = entityId,
-                          subscriber = "EpsHodsAdapter")
+                          subscriber = subscriber)
   }
 
   class TestCase {
@@ -145,20 +152,27 @@ class PublishSubscribersServiceSpec
     val prefId = new ObjectId()
     val entityId = UUID.randomUUID().toString
 
-    val pc = PreferencesChanged(_id = new ObjectId(),
-                                changedValue = Paper,
-                                preferenceId = prefId,
-                                entityId = entityId,
-                                updatedAt = Instant.now(),
-                                taxIds = Map("nino" -> "AB112233C"))
+    val pc = PreferencesChanged(
+      _id = new ObjectId(),
+      changedValue = Paper,
+      preferenceId = prefId,
+      entityId = entityId,
+      updatedAt = Instant.now(),
+      taxIds = Map("nino" -> "AB112233C", "sautr" -> "sautr1"))
 
     // insert a preference changed document
     val preferenceChangedRes =
       pcRepo.upsert(pc).futureValue
 
-    val pcr = createPcr(preferenceChangedRes._id, entityId, prefId)
+    val pcr1 =
+      createPcr(preferenceChangedRes._id, entityId, prefId, "EpsHodsAdapter")
+    val pcr2 = createPcr(preferenceChangedRes._id,
+                         entityId,
+                         prefId,
+                         "UpdatedPrintSuppressionAdapter")
 
     // insert a workitem
-    val wi = pcwiRepo.pushUpdated(pcr).futureValue
+    val wi1 = pcwiRepo.pushUpdated(pcr1).futureValue
+    val wi2 = pcwiRepo.pushUpdated(pcr2).futureValue
   }
 }

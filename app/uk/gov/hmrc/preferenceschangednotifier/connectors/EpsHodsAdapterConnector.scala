@@ -33,9 +33,13 @@ class EpsHodsAdapterConnector @Inject()(http: HttpClient,
 
   override val httpClient: HttpClient = http
 
+  val NpsTaxId = "nino"
+
   lazy val baseUrl: String = servicesConfig.baseUrl("eps-hods-adapter")
 
   override def url: String =
     s"$baseUrl/eps-hods-adapter/preferences/notify-subscriber"
 
+  override def taxIdsValid(taxIds: Map[String, String]): Boolean =
+    taxIds.contains(NpsTaxId) && taxIds.getOrElse(NpsTaxId, "") != ""
 }

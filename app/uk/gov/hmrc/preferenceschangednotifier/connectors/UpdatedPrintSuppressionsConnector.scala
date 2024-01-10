@@ -32,8 +32,13 @@ class UpdatedPrintSuppressionsConnector @Inject()(
 
   override val httpClient: HttpClient = http
 
+  val UpsTaxId = "sautr"
+
   lazy val baseUrl: String =
     servicesConfig.baseUrl("updated-print-suppressions")
 
   override def url: String = s"$baseUrl/preferences/notify-subscriber"
+
+  override def taxIdsValid(taxIds: Map[String, String]): Boolean =
+    taxIds.contains(UpsTaxId) && taxIds.getOrElse(UpsTaxId, "") != ""
 }

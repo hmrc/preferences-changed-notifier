@@ -35,6 +35,8 @@ trait Subscriber {
   protected val httpClient: HttpClient
   protected def url: String
 
+  def taxIdsValid(value: Map[String, String]): Boolean
+
   def notifySubscriber(request: NotifySubscriberRequest)(
       implicit hc: HeaderCarrier,
       ex: ExecutionContext)
