@@ -16,12 +16,11 @@
 
 package uk.gov.hmrc.preferenceschangednotifier.controllers
 
+import akka.actor.ActorSystem
 import org.mongodb.scala.model.Filters
 import org.scalatest.{BeforeAndAfterEach, Suite, TestSuite}
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
-import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.must.Matchers.convertToAnyMustWrapper
-import org.scalatest.matchers.should.Matchers
+import org.scalatestplus.play.PlaySpec
 import org.scalatestplus.play.guice.GuiceOneServerPerSuite
 import play.api.Application
 import play.api.http.ContentTypes
@@ -34,11 +33,9 @@ import uk.gov.hmrc.mongo.test.MongoSupport
 import uk.gov.hmrc.preferenceschangednotifier.repository.{PreferencesChangedRepository, PreferencesChangedWorkItemRepository}
 
 import java.util.UUID
-import scala.concurrent.ExecutionContext
 
 class PreferencesChangedControllerISpec
-  extends AnyFreeSpec
-    with Matchers
+  extends PlaySpec
     with TestSuite
     with GuiceOneServerPerSuite
     with ScalaFutures
@@ -47,22 +44,17 @@ class PreferencesChangedControllerISpec
     with BeforeAndAfterEach
     with Injecting { this: Suite =>
 
-  implicit val ec: ExecutionContext = ExecutionContext.Implicits.global
-
   override implicit lazy val app: Application = new GuiceApplicationBuilder()
     .configure("metrics.enabled" -> false)
     .build()
   
-  private val controller = inject[PreferencesChangedController]
-  private val repo       = inject[PreferencesChangedRepository]
-  private val wiRepo     = inject[PreferencesChangedWorkItemRepository]
+  val system = ActorSystem("test")
+  implicit val executionContext = system.dispatcher
 
-  override protected def beforeEach(): Unit = {
-    repo.collection.deleteMany(Filters.empty()).toFuture().futureValue
-    wiRepo.collection.deleteMany(Filters.empty()).toFuture().futureValue
-    dropDatabase()
-    super.beforeEach()
-  }
+  val controller = inject[PreferencesChangedController]
+  val repo = inject[PreferencesChangedRepository]
+  val wiRepo = inject[PreferencesChangedWorkItemRepository]
+  
   private def createFakePostRequest(reqBody: String, subscribeUps: Boolean) = {
     val headers: (String,String) = if (subscribeUps) {
       "X-SUBSCRIBE-UPS" -> "true"
@@ -78,7 +70,20 @@ class PreferencesChangedControllerISpec
     )
   }
 
-  "POST /preferences-changed" - {
+  override def beforeEach(): Unit = {
+    repo.collection.deleteMany(Filters.empty()).toFuture().futureValue
+    wiRepo.collection.deleteMany(Filters.empty()).toFuture().futureValue
+//    dropDatabase()
+  }
+
+//  override def afterEach(): Unit = {
+//    println(s"afterEach")
+//    repo.collection.deleteMany(Filters.empty()).toFuture().futureValue
+//    wiRepo.collection.deleteMany(Filters.empty()).toFuture().futureValue
+//    dropDatabase()
+//  }
+
+  "POST /preferences-changed" must {
     val entityId = UUID.randomUUID().toString
 
     "return 200 for eps subscriber only" in {
@@ -123,6 +128,78 @@ class PreferencesChangedControllerISpec
       wiRepoCount must be(2)
     }
 
+    "dont add any workitems if NINO and SAUTR are both undefined" in {
+      val reqBody =
+        s"""{
+           |  "changedValue" : "paper",
+           |  "preferenceId" : "65263df8d843592d74a2bfc6",
+           |  "entityId"     : "$entityId",
+           |  "updatedAt"    : "2023-10-11T01:30:00.000Z",
+           |  "taxIds"       : {}
+           |}""".stripMargin
+
+      val fakePostRequest = createFakePostRequest(reqBody, subscribeUps = true)
+      val result = controller.preferencesChanged()(fakePostRequest).futureValue
+      result.header.status must be(OK)
+
+      val repoCount   = repo.collection.countDocuments().toFuture().futureValue
+      val wiRepoCount = wiRepo.collection.countDocuments().toFuture().futureValue
+
+      repoCount must be(1)
+      wiRepoCount must be(0)
+    }
+
+    
+    "only add NPS subscriber workitem if SAUTR is undefined" in {
+      val reqBody =
+        s"""{
+           |  "changedValue" : "paper",
+           |  "preferenceId" : "65263df8d843592d74a2bfc6",
+           |  "entityId"     : "$entityId",
+           |  "updatedAt"    : "2023-10-11T01:30:00.000Z",
+           |  "taxIds"       : { "nino" : "AB112233C" }
+           |}""".stripMargin
+
+      val fakePostRequest = createFakePostRequest(reqBody, subscribeUps = true)
+      val result = controller.preferencesChanged()(fakePostRequest).futureValue
+      result.header.status must be(OK)
+
+      val repoCount = repo.collection.countDocuments().toFuture().futureValue
+      val wiRepoCount = wiRepo.collection.countDocuments().toFuture().futureValue
+
+      repoCount must be(1)
+      wiRepoCount must be(1)
+      
+      val workItem = wiRepo.collection.find().first().toFuture().futureValue
+      workItem.item.entityId must be(entityId)
+      workItem.item.subscriber must be("EpsHodsAdapter")
+    }
+
+    "only add UPS subscriber workitem if NINO is undefined" in {
+      val reqBody =
+        s"""{
+           |  "changedValue" : "paper",
+           |  "preferenceId" : "65263df8d843592d74a2bfc6",
+           |  "entityId"     : "$entityId",
+           |  "updatedAt"    : "2023-10-11T01:30:00.000Z",
+           |  "taxIds"       : { "sautr" : "abcde" }
+           |}""".stripMargin
+
+      val fakePostRequest = createFakePostRequest(reqBody, subscribeUps = true)
+      val result = controller.preferencesChanged()(fakePostRequest).futureValue
+      result.header.status must be(OK)
+
+      val repoCount = repo.collection.countDocuments().toFuture().futureValue
+      val wiRepoCount = wiRepo.collection.estimatedDocumentCount().toFuture().futureValue
+
+      repoCount must be(1)
+      wiRepoCount must be(1)
+      
+      val workItem = wiRepo.collection.find().first().toFuture().futureValue
+      workItem.item.entityId must be(entityId)
+      workItem.item.subscriber must be("UpdatedPrintSuppressions")
+    }
+    
     "return 400 when the date is incorrectly formatted" in {
       val reqBody =
         s"""{

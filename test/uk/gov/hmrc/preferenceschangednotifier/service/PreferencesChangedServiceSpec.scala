@@ -75,7 +75,7 @@ class PreferencesChangedServiceSpec
   "Preferences changed service" - {
     val entityId = UUID.randomUUID().toString
 
-    "should correctly add an item to the repo" in {
+    "should correctly add an item to the repo, but NOT add a workitem" in {
       val pId = new ObjectId("75259498e6baf61da75dceef")
       val pcId = new ObjectId("65259498e6baf61da75dceef")
 
@@ -88,22 +88,6 @@ class PreferencesChangedServiceSpec
                                preferenceId = pId,
                                updatedAt = Instant.now(),
                                Map.empty))
-        )
-
-      when(workItemRepo.pushUpdated(any[PreferencesChangedRef]))
-        .thenReturn(
-          Future.successful(
-            WorkItem(
-              new ObjectId,
-              receivedAt = Instant.now,
-              updatedAt = Instant.now,
-              availableAt = Instant.now,
-              status = ToDo,
-              failureCount = 0,
-              item =
-                PreferencesChangedRef(pcId, pId, entityId, "EpsHodsAdapter")
-            )
-          )
         )
 
       val pcr = PreferencesChangedRequest(
@@ -127,7 +111,7 @@ class PreferencesChangedServiceSpec
         changedValue = Paper,
         preferenceId = new ObjectId("75259498e6baf61da75dceef"),
         updatedAt = Instant.now(),
-        Map.empty
+        Map("nino" -> "AB112233A")
       )
 
       when(repo.upsert(any[PreferencesChanged]))
@@ -139,7 +123,7 @@ class PreferencesChangedServiceSpec
         changedValue = Digital,
         preferenceId = new ObjectId("75259498e6baf61da75dceef"),
         updatedAt = Instant.now(),
-        Map.empty
+        Map("nino" -> "AB112233A")
       )
 
       when(repo.upsert(any[PreferencesChanged]))
@@ -166,8 +150,10 @@ class PreferencesChangedServiceSpec
         preferenceId = pc1.preferenceId.toString,
         entityId,
         Instant.now,
-        taxIds = Map.empty
+        taxIds = Map("nino" -> "AB112233A")
       )
+
+      when(epsConnector.taxIdsValid(any[Map[String, String]])).thenReturn(true)
 
       val result =
         svc.preferenceChanged(pcr, updateUPS = true).value.futureValue
@@ -178,7 +164,7 @@ class PreferencesChangedServiceSpec
       result2 must equal(Right(()))
 
       verify(repo, times(2)).upsert(any[PreferencesChanged])
-      verify(workItemRepo, times(4)).pushUpdated(any[PreferencesChangedRef])
+      verify(workItemRepo, times(2)).pushUpdated(any[PreferencesChangedRef])
     }
 
     "adds only a single workitem is updateUPS is false" in {

@@ -96,7 +96,8 @@ class PreferencesChangedService @Inject()(
         addPreferenceChangedWorkItems(pcId,
                                       new ObjectId(pcRequest.preferenceId),
                                       pcRequest.entityId,
-                                      updateUPS))
+                                      updateUPS,
+                                      pcRequest.taxIds))
     } yield res
 
   }
@@ -131,47 +132,50 @@ class PreferencesChangedService @Inject()(
       }
   }
 
-  private def filterSubscribers(updateUPS: Boolean) = {
-    val items = subscribers.filterNot((p: Subscriber) => {
-      (p.name == "UpdatedPrintSuppressions") && (updateUPS == false)
-    })
-    items
-  }
+  private def filterSubscribers(updateUPS: Boolean,
+                                taxIds: Map[String, String]) =
+    subscribers
+      .filter(_.taxIdsValid(taxIds))
+      .filterNot(p => (p.name == "UpdatedPrintSuppressions") && !updateUPS)
 
   // Create a workitem for the specified preference changed
   private def addPreferenceChangedWorkItems(
       pcId: ObjectId,
       pId: ObjectId,
       entityId: String,
-      updateUPS: Boolean): Future[Either[ErrorResponse, Unit]] = {
+      updateUPS: Boolean,
+      taxIds: Map[String, String]): Future[Either[ErrorResponse, Unit]] = {
 
-    Future
-      .sequence {
-        filterSubscribers(updateUPS).map { s =>
-          pcWorkItemRepo
-            .pushUpdated(
-              PreferencesChangedRef(pcId, pId, entityId, s.name)
-            )
-            .map(_ => Right(()))
-            .recover { ex =>
-              Left(PersistenceError(ex.getMessage))
+    filterSubscribers(updateUPS, taxIds) match {
+      case Seq() =>
+        Future.successful(Right(()))
+      case subs =>
+        Future
+          .sequence {
+            subs.map { s =>
+              pcWorkItemRepo
+                .pushUpdated(
+                  PreferencesChangedRef(pcId, pId, entityId, s.name)
+                )
+                .map(_ => Right(()))
+                .recover { ex =>
+                  Left(PersistenceError(ex.getMessage))
+                }
             }
-
-        }
-      }
-      .map { seq =>
-        {
-          if (seq.exists(_.isLeft)) {
-            Left(
-              seq
-                .collect { case Left(ex) => ex }
-                .fold(PersistenceError(""))((acc, next) =>
-                  PersistenceError(s"${acc.message}\n${next.message}")))
-          } else {
-            Right(())
           }
-        }
-      }
+          .map { seq =>
+            {
+              if (seq.exists(_.isLeft)) {
+                Left(
+                  seq
+                    .collect { case Left(ex) => ex }
+                    .fold(PersistenceError(""))((acc, next) =>
+                      PersistenceError(s"${acc.message}\n${next.message}")))
+              } else {
+                Right(())
+              }
+            }
+          }
+    }
   }
-
 }
