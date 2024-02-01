@@ -55,17 +55,11 @@ class PreferencesChangedControllerISpec
   val repo = inject[PreferencesChangedRepository]
   val wiRepo = inject[PreferencesChangedWorkItemRepository]
   
-  private def createFakePostRequest(reqBody: String, subscribeUps: Boolean) = {
-    val headers: (String,String) = if (subscribeUps) {
-      "X-SUBSCRIBE-UPS" -> "true"
-    } else {
-      "X-SUBSCRIBE-UPS" -> "false"
-    }
-    
+  private def createFakePostRequest(reqBody: String) = {
     FakeRequest(
       "POST",
       routes.PreferencesChangedController.preferencesChanged().url,
-      FakeHeaders(Seq(CONTENT_TYPE -> ContentTypes.JSON, headers)),
+      FakeHeaders(Seq(CONTENT_TYPE -> ContentTypes.JSON)),
       Json.parse(reqBody)
     )
   }
@@ -73,39 +67,10 @@ class PreferencesChangedControllerISpec
   override def beforeEach(): Unit = {
     repo.collection.deleteMany(Filters.empty()).toFuture().futureValue
     wiRepo.collection.deleteMany(Filters.empty()).toFuture().futureValue
-//    dropDatabase()
   }
-
-//  override def afterEach(): Unit = {
-//    println(s"afterEach")
-//    repo.collection.deleteMany(Filters.empty()).toFuture().futureValue
-//    wiRepo.collection.deleteMany(Filters.empty()).toFuture().futureValue
-//    dropDatabase()
-//  }
 
   "POST /preferences-changed" must {
     val entityId = UUID.randomUUID().toString
-
-    "return 200 for eps subscriber only" in {
-      val reqBody =
-        s"""{
-           |  "changedValue" : "paper",
-           |  "preferenceId" : "65263df8d843592d74a2bfc6",
-           |  "entityId"     : "$entityId",
-           |  "updatedAt"    : "2023-10-11T01:30:00.000Z",
-           |  "taxIds"       : { "nino" : "AB112233C", "sautr" : "abcde" }
-           |}""".stripMargin
-
-      val fakePostRequest = createFakePostRequest(reqBody, subscribeUps = false)
-      val result = controller.preferencesChanged()(fakePostRequest).futureValue
-      result.header.status must be(OK)
-      
-      val repoCount   =   repo.collection.countDocuments().toFuture().futureValue
-      val wiRepoCount = wiRepo.collection.countDocuments().toFuture().futureValue
-      
-      repoCount must be(1)
-      wiRepoCount must be(1)
-    }
 
     "return 200 for both subscribers" in {
       val reqBody =
@@ -117,7 +82,7 @@ class PreferencesChangedControllerISpec
            |  "taxIds"       : { "nino" : "AB112233C", "sautr" : "abcde" }
            |}""".stripMargin
 
-      val fakePostRequest = createFakePostRequest(reqBody, subscribeUps = true)
+      val fakePostRequest = createFakePostRequest(reqBody)
       val result = controller.preferencesChanged()(fakePostRequest).futureValue
       result.header.status must be(OK)
       
@@ -138,7 +103,7 @@ class PreferencesChangedControllerISpec
            |  "taxIds"       : {}
            |}""".stripMargin
 
-      val fakePostRequest = createFakePostRequest(reqBody, subscribeUps = true)
+      val fakePostRequest = createFakePostRequest(reqBody)
       val result = controller.preferencesChanged()(fakePostRequest).futureValue
       result.header.status must be(OK)
 
@@ -160,7 +125,7 @@ class PreferencesChangedControllerISpec
            |  "taxIds"       : { "nino" : "AB112233C" }
            |}""".stripMargin
 
-      val fakePostRequest = createFakePostRequest(reqBody, subscribeUps = true)
+      val fakePostRequest = createFakePostRequest(reqBody)
       val result = controller.preferencesChanged()(fakePostRequest).futureValue
       result.header.status must be(OK)
 
@@ -185,7 +150,7 @@ class PreferencesChangedControllerISpec
            |  "taxIds"       : { "sautr" : "abcde" }
            |}""".stripMargin
 
-      val fakePostRequest = createFakePostRequest(reqBody, subscribeUps = true)
+      val fakePostRequest = createFakePostRequest(reqBody)
       val result = controller.preferencesChanged()(fakePostRequest).futureValue
       result.header.status must be(OK)
 
@@ -210,7 +175,7 @@ class PreferencesChangedControllerISpec
           |"taxIds"       : {"nino":"AB112233C"}
           |}""".stripMargin
 
-      val fakePostRequest = createFakePostRequest(reqBody, subscribeUps = true)
+      val fakePostRequest = createFakePostRequest(reqBody)
       val result = controller.preferencesChanged()(fakePostRequest)
       
       status(result) must be(BAD_REQUEST)
@@ -233,7 +198,7 @@ class PreferencesChangedControllerISpec
           |  "taxIds"       : {"nino":"AB112233C"}
           |}""".stripMargin
 
-      val fakePostRequest = createFakePostRequest(reqBody, subscribeUps = true)
+      val fakePostRequest = createFakePostRequest(reqBody)
       val result = controller.preferencesChanged()(fakePostRequest)
 
       status(result) must be(BAD_REQUEST)

@@ -43,14 +43,8 @@ class PreferencesChangedController @Inject()(
   def preferencesChanged(): Action[JsValue] = Action.async(parse.json) {
     implicit request =>
       withJsonBody[PreferencesChangedRequest] { body =>
-        // TODO: Remove once in production, this acts as a feature flag
-        val flag = request.headers.get("X-SUBSCRIBE-UPS") match {
-          case Some(value) => value.toBooleanOption.getOrElse(false)
-          case _           => false
-        }
-
         svc
-          .preferenceChanged(body, flag)
+          .preferenceChanged(body)
           .fold(
             {
               case RequestError(r)     => BadRequest(r)

@@ -68,7 +68,6 @@ class PublishSubscribersServiceSpec
       )
       .build()
 
-//  val system = ActorSystem("test")
   implicit val executionContext = ExecutionContext.Implicits.global
 
   private val service = app.injector.instanceOf[PublishSubscribersService]

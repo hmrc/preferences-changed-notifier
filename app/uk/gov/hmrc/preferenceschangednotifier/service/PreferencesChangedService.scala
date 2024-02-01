@@ -86,9 +86,8 @@ class PreferencesChangedService @Inject()(
       }
   }
 
-  def preferenceChanged(
-      pcRequest: PreferencesChangedRequest,
-      updateUPS: Boolean): EitherT[Future, ErrorResponse, Unit] = {
+  def preferenceChanged(pcRequest: PreferencesChangedRequest)
+    : EitherT[Future, ErrorResponse, Unit] = {
 
     for {
       pcId <- EitherT(addPreferenceChanged(pcRequest))
@@ -96,7 +95,6 @@ class PreferencesChangedService @Inject()(
         addPreferenceChangedWorkItems(pcId,
                                       new ObjectId(pcRequest.preferenceId),
                                       pcRequest.entityId,
-                                      updateUPS,
                                       pcRequest.taxIds))
     } yield res
 
@@ -132,21 +130,17 @@ class PreferencesChangedService @Inject()(
       }
   }
 
-  private def filterSubscribers(updateUPS: Boolean,
-                                taxIds: Map[String, String]) =
-    subscribers
-      .filter(_.taxIdsValid(taxIds))
-      .filterNot(p => (p.name == "UpdatedPrintSuppressions") && !updateUPS)
+  private def filterSubscribers(taxIds: Map[String, String]) =
+    subscribers.filter(_.taxIdsValid(taxIds))
 
   // Create a workitem for the specified preference changed
   private def addPreferenceChangedWorkItems(
       pcId: ObjectId,
       pId: ObjectId,
       entityId: String,
-      updateUPS: Boolean,
       taxIds: Map[String, String]): Future[Either[ErrorResponse, Unit]] = {
 
-    filterSubscribers(updateUPS, taxIds) match {
+    filterSubscribers(taxIds) match {
       case Seq() =>
         Future.successful(Right(()))
       case subs =>
