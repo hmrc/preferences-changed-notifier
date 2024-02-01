@@ -20,7 +20,6 @@ import akka.actor.ActorSystem
 import akka.stream.Materializer
 import cats.data.EitherT
 import org.mockito.ArgumentMatchers.any
-import org.mockito.ArgumentMatchersSugar.eqTo
 import org.mockito.MockitoSugar.{mock, when}
 import org.mongodb.scala.bson.ObjectId
 import org.scalatest.freespec.AnyFreeSpec
@@ -50,11 +49,11 @@ class PreferencesChangedControllerSpec extends AnyFreeSpec with Matchers {
     Helpers.stubControllerComponents(),
     service)
 
-  private def createFakePostRequest(reqBody: String, flag: (String, String)) =
+  private def createFakePostRequest(reqBody: String) =
     FakeRequest(
       "POST",
       routes.PreferencesChangedController.preferencesChanged().url,
-      FakeHeaders(Seq(CONTENT_TYPE -> ContentTypes.JSON, flag)), //"X-SUBSCRIBE-UPS" -> "true")),
+      FakeHeaders(Seq(CONTENT_TYPE -> ContentTypes.JSON)),
       Json.parse(reqBody)
     )
 
@@ -71,10 +70,9 @@ class PreferencesChangedControllerSpec extends AnyFreeSpec with Matchers {
            |}""".stripMargin
 
       val fakePostRequest =
-        createFakePostRequest(reqBody, "X-SUBSCRIBE-UPS" -> "true")
+        createFakePostRequest(reqBody)
 
-      when(
-        service.preferenceChanged(any[PreferencesChangedRequest], eqTo(true)))
+      when(service.preferenceChanged(any[PreferencesChangedRequest]))
         .thenReturn(EitherT.rightT(()))
 
       val result = controller.preferencesChanged()(fakePostRequest)
@@ -92,10 +90,9 @@ class PreferencesChangedControllerSpec extends AnyFreeSpec with Matchers {
           |}""".stripMargin
 
       val fakePostRequest =
-        createFakePostRequest(reqBody, "X-SUBSCRIBE-UPS" -> "true")
+        createFakePostRequest(reqBody)
 
-      when(
-        service.preferenceChanged(any[PreferencesChangedRequest], eqTo(true)))
+      when(service.preferenceChanged(any[PreferencesChangedRequest]))
         .thenReturn(EitherT.leftT(ServerError("whatever")))
 
       val result = controller.preferencesChanged()(fakePostRequest)
@@ -118,10 +115,9 @@ class PreferencesChangedControllerSpec extends AnyFreeSpec with Matchers {
             |""".stripMargin
 
       val fakePostRequest =
-        createFakePostRequest(reqBody, "X-SUBSCRIBE-UPS" -> "true")
+        createFakePostRequest(reqBody)
 
-      when(
-        service.preferenceChanged(any[PreferencesChangedRequest], eqTo(true)))
+      when(service.preferenceChanged(any[PreferencesChangedRequest]))
         .thenReturn(EitherT.leftT(ServerError("whatever")))
 
       val result = controller.preferencesChanged()(fakePostRequest)
@@ -140,10 +136,9 @@ class PreferencesChangedControllerSpec extends AnyFreeSpec with Matchers {
            |}""".stripMargin
 
       val fakePostRequest =
-        createFakePostRequest(reqBody, "X-SUBSCRIBE-UPS" -> "false")
+        createFakePostRequest(reqBody)
 
-      when(
-        service.preferenceChanged(any[PreferencesChangedRequest], eqTo(false)))
+      when(service.preferenceChanged(any[PreferencesChangedRequest]))
         .thenReturn(EitherT.rightT(()))
 
       val result = controller.preferencesChanged()(fakePostRequest)
@@ -161,10 +156,9 @@ class PreferencesChangedControllerSpec extends AnyFreeSpec with Matchers {
            |}""".stripMargin
 
       val fakePostRequest =
-        createFakePostRequest(reqBody, ("X-WRONG" -> "false"))
+        createFakePostRequest(reqBody)
 
-      when(
-        service.preferenceChanged(any[PreferencesChangedRequest], eqTo(false)))
+      when(service.preferenceChanged(any[PreferencesChangedRequest]))
         .thenReturn(EitherT.rightT(()))
 
       val result = controller.preferencesChanged()(fakePostRequest)

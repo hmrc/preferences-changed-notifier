@@ -98,7 +98,7 @@ class PreferencesChangedServiceSpec
         taxIds = Map.empty
       )
       val result =
-        svc.preferenceChanged(pcr, updateUPS = true).value.futureValue
+        svc.preferenceChanged(pcr).value.futureValue
 
       result must equal(Right(()))
       verify(repo, times(1)).upsert(any[PreferencesChanged])
@@ -156,11 +156,11 @@ class PreferencesChangedServiceSpec
       when(epsConnector.taxIdsValid(any[Map[String, String]])).thenReturn(true)
 
       val result =
-        svc.preferenceChanged(pcr, updateUPS = true).value.futureValue
+        svc.preferenceChanged(pcr).value.futureValue
       result must equal(Right(()))
 
       val result2 =
-        svc.preferenceChanged(pcr, updateUPS = true).value.futureValue
+        svc.preferenceChanged(pcr).value.futureValue
       result2 must equal(Right(()))
 
       verify(repo, times(2)).upsert(any[PreferencesChanged])
@@ -205,7 +205,7 @@ class PreferencesChangedServiceSpec
                      failureCount = 0)))
 
       val result =
-        svc.preferenceChanged(pcr, updateUPS = false).value.futureValue
+        svc.preferenceChanged(pcr).value.futureValue
       result must equal(Right(()))
 
       verify(workItemRepo, times(1)).pushUpdated(any[PreferencesChangedRef])
@@ -225,7 +225,7 @@ class PreferencesChangedServiceSpec
         taxIds = Map.empty
       )
       val result =
-        svc.preferenceChanged(pcr, updateUPS = true).value.futureValue
+        svc.preferenceChanged(pcr).value.futureValue
 
       result must equal(
         Left(PersistenceError("java.lang.RuntimeException: oops")))
@@ -245,7 +245,7 @@ class PreferencesChangedServiceSpec
         taxIds = Map.empty
       )
       val result =
-        svc.preferenceChanged(pcr, updateUPS = true).value.futureValue
+        svc.preferenceChanged(pcr).value.futureValue
 
       result must equal(
         Left(PersistenceError("java.lang.RuntimeException: whoa!")))
@@ -264,7 +264,7 @@ class PreferencesChangedServiceSpec
                                           Map.empty)
 
       val result =
-        svc.preferenceChanged(pcr, updateUPS = true).value.futureValue
+        svc.preferenceChanged(pcr).value.futureValue
 
       result must equal(
         Left(PersistenceError("java.lang.RuntimeException: whoa, throwing!")))
