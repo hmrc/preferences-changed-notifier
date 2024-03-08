@@ -3,7 +3,7 @@ import uk.gov.hmrc.DefaultBuildSettings.*
 val appName: String = "preferences-changed-notifier"
 
 ThisBuild / majorVersion := 0
-ThisBuild / scalaVersion := "2.13.8"
+ThisBuild / scalaVersion := "2.13.12"
 ThisBuild / scalafmtOnCompile := true
 
 lazy val microservice = Project("preferences-changed-notifier", file("."))
@@ -16,11 +16,14 @@ lazy val microservice = Project("preferences-changed-notifier", file("."))
     scalacOptions += "-Wconf:src=routes/.*:s",
     scalacOptions += "-feature"
   )
-  .configs(IntegrationTest)
-  .settings(integrationTestSettings(): _*)
   .settings(resolvers += Resolver.jcenterRepo)
   .settings(CodeCoverageSettings.settings: _*)
 
+lazy val it = Project(id = "it", base = file("it"))
+  .enablePlugins(PlayScala, ScalafmtPlugin)
+  .dependsOn(microservice % "test->test") // the "test->test" allows reusing test code and test dependencies
+  .settings(libraryDependencies ++= AppDependencies.it)
+
 addCommandAlias(
   "buildall",
-  ";clean;compile;coverage;test;it:test;scalastyle;coverageReport")
+  ";clean;compile;coverage;test;it/test;scalastyle;coverageReport")

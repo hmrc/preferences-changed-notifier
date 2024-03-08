@@ -16,8 +16,8 @@
 
 package uk.gov.hmrc.preferenceschangednotifier.controllers
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.stream.Materializer
 import cats.data.EitherT
 import org.mockito.ArgumentMatchers.any
 import org.mockito.MockitoSugar.{mock, when}
