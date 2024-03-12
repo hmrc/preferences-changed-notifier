@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.preferenceschangednotifier.controllers
+package test.uk.gov.hmrc.preferenceschangednotifier.controllers
 
-import akka.actor.ActorSystem
+import org.apache.pekko.actor.ActorSystem
 import org.mongodb.scala.model.Filters
 import org.scalatest.{BeforeAndAfterEach, Suite, TestSuite}
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
@@ -27,15 +27,28 @@ import play.api.http.ContentTypes
 import play.api.http.Status.{BAD_REQUEST, OK}
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.Json
-import play.api.test.Helpers.{CONTENT_TYPE, contentAsString, defaultAwaitTimeout, status}
+import play.api.test.Helpers.{
+  CONTENT_TYPE,
+  contentAsString,
+  defaultAwaitTimeout,
+  status
+}
 import play.api.test.{FakeHeaders, FakeRequest, Injecting}
 import uk.gov.hmrc.mongo.test.MongoSupport
-import uk.gov.hmrc.preferenceschangednotifier.repository.{PreferencesChangedRepository, PreferencesChangedWorkItemRepository}
+import uk.gov.hmrc.preferenceschangednotifier.controllers.{
+  PreferencesChangedController,
+  routes
+}
+import uk.gov.hmrc.preferenceschangednotifier.repository.{
+  PreferencesChangedRepository,
+  PreferencesChangedWorkItemRepository
+}
 
 import java.util.UUID
+import scala.concurrent.ExecutionContextExecutor
 
 class PreferencesChangedControllerISpec
-  extends PlaySpec
+    extends PlaySpec
     with TestSuite
     with GuiceOneServerPerSuite
     with ScalaFutures
@@ -47,14 +60,14 @@ class PreferencesChangedControllerISpec
   override implicit lazy val app: Application = new GuiceApplicationBuilder()
     .configure("metrics.enabled" -> false)
     .build()
-  
+
   val system = ActorSystem("test")
-  implicit val executionContext = system.dispatcher
+  implicit val executionContext: ExecutionContextExecutor = system.dispatcher
 
   val controller = inject[PreferencesChangedController]
   val repo = inject[PreferencesChangedRepository]
   val wiRepo = inject[PreferencesChangedWorkItemRepository]
-  
+
   private def createFakePostRequest(reqBody: String) = {
     FakeRequest(
       "POST",
@@ -85,10 +98,11 @@ class PreferencesChangedControllerISpec
       val fakePostRequest = createFakePostRequest(reqBody)
       val result = controller.preferencesChanged()(fakePostRequest).futureValue
       result.header.status must be(OK)
-      
-      val repoCount   =   repo.collection.countDocuments().toFuture().futureValue
-      val wiRepoCount = wiRepo.collection.countDocuments().toFuture().futureValue
-      
+
+      val repoCount = repo.collection.countDocuments().toFuture().futureValue
+      val wiRepoCount =
+        wiRepo.collection.countDocuments().toFuture().futureValue
+
       repoCount must be(1)
       wiRepoCount must be(2)
     }
@@ -107,14 +121,14 @@ class PreferencesChangedControllerISpec
       val result = controller.preferencesChanged()(fakePostRequest).futureValue
       result.header.status must be(OK)
 
-      val repoCount   = repo.collection.countDocuments().toFuture().futureValue
-      val wiRepoCount = wiRepo.collection.countDocuments().toFuture().futureValue
+      val repoCount = repo.collection.countDocuments().toFuture().futureValue
+      val wiRepoCount =
+        wiRepo.collection.countDocuments().toFuture().futureValue
 
       repoCount must be(1)
       wiRepoCount must be(0)
     }
 
-    
     "only add NPS subscriber workitem if SAUTR is undefined" in {
       val reqBody =
         s"""{
@@ -130,11 +144,12 @@ class PreferencesChangedControllerISpec
       result.header.status must be(OK)
 
       val repoCount = repo.collection.countDocuments().toFuture().futureValue
-      val wiRepoCount = wiRepo.collection.countDocuments().toFuture().futureValue
+      val wiRepoCount =
+        wiRepo.collection.countDocuments().toFuture().futureValue
 
       repoCount must be(1)
       wiRepoCount must be(1)
-      
+
       val workItem = wiRepo.collection.find().first().toFuture().futureValue
       workItem.item.entityId must be(entityId)
       workItem.item.subscriber must be("EpsHodsAdapter")
@@ -155,16 +170,17 @@ class PreferencesChangedControllerISpec
       result.header.status must be(OK)
 
       val repoCount = repo.collection.countDocuments().toFuture().futureValue
-      val wiRepoCount = wiRepo.collection.estimatedDocumentCount().toFuture().futureValue
+      val wiRepoCount =
+        wiRepo.collection.estimatedDocumentCount().toFuture().futureValue
 
       repoCount must be(1)
       wiRepoCount must be(1)
-      
+
       val workItem = wiRepo.collection.find().first().toFuture().futureValue
       workItem.item.entityId must be(entityId)
       workItem.item.subscriber must be("UpdatedPrintSuppressions")
     }
-    
+
     "return 400 when the date is incorrectly formatted" in {
       val reqBody =
         s"""{
@@ -177,16 +193,15 @@ class PreferencesChangedControllerISpec
 
       val fakePostRequest = createFakePostRequest(reqBody)
       val result = controller.preferencesChanged()(fakePostRequest)
-      
+
       status(result) must be(BAD_REQUEST)
-      
+
       val errStr = "Invalid PreferencesChangedRequest payload: List" +
         "((/updatedAt,List(JsonValidationError(List(Could not parse " +
-        "023-10-11T01:30:00.000Z as an ISO Instant),ArraySeq()))))"
+        "023-10-11T01:30:00.000Z as an ISO Instant),List()))))"
 
       contentAsString(result) must be(errStr)
     }
-    
 
     "return 400 when the objectid is incorrectly formatted" in {
       val reqBody =
@@ -203,10 +218,11 @@ class PreferencesChangedControllerISpec
 
       status(result) must be(BAD_REQUEST)
 
-      val errStr = "java.lang.IllegalArgumentException: invalid hexadecimal representation of an ObjectId: [5555]"
+      val errStr =
+        "java.lang.IllegalArgumentException: state should be: hexString has 24 characters"
 
       contentAsString(result) must be(errStr)
     }
-    
+
   }
 }

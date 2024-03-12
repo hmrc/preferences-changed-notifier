@@ -68,7 +68,8 @@ class PublishSubscribersServiceSpec
       )
       .build()
 
-  implicit val executionContext = ExecutionContext.Implicits.global
+  implicit val executionContext: ExecutionContext =
+    ExecutionContext.Implicits.global
 
   private val service = app.injector.instanceOf[PublishSubscribersService]
   private val pcRepo = app.injector.instanceOf[PreferencesChangedRepository]

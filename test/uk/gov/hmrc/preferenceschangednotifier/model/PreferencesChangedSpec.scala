@@ -148,7 +148,7 @@ class PreferencesChangedSpec extends AnyFreeSpec {
 
       the[IllegalArgumentException] thrownBy {
         PreferencesChanged.from(req)
-      } must have message "invalid hexadecimal representation of an ObjectId: [111]"
+      } must have message "state should be: hexString has 24 characters"
     }
 
     "check taxIds" in {

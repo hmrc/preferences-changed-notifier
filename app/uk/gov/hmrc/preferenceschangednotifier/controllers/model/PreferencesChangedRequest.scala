@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.preferenceschangednotifier.controllers.model
 
-import play.api.libs.json.Json
+import play.api.libs.json.{Format, Json, Reads}
 import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat
 
 import java.time.Instant
@@ -30,7 +30,9 @@ case class PreferencesChangedRequest(
 )
 
 object PreferencesChangedRequest {
-  implicit val mdFormat = MessageDeliveryFormat.format
-  implicit val dateTimeFormat = RestInstantFormat.reads
-  implicit val reads = Json.reads[PreferencesChangedRequest]
+  implicit val mdFormat: Format[MessageDeliveryFormat] =
+    MessageDeliveryFormat.format
+  implicit val dateTimeFormat: Reads[Instant] = RestInstantFormat.reads
+  implicit val reads: Reads[PreferencesChangedRequest] =
+    Json.reads[PreferencesChangedRequest]
 }

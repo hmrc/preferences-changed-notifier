@@ -153,7 +153,7 @@ class PreferencesChangedWorkItemRepositorySpec
                               "https://localhost:1234")
 
       val wi1 = repository.pushUpdated(a).futureValue
-      repository.markAs(wi1.id, ProcessingStatus.InProgress)
+      repository.markAs(wi1.id, ProcessingStatus.InProgress).futureValue
       val wi2 = repository.pushUpdated(b).futureValue // creates a new workitem
 
       wi1.receivedAt.isBefore(wi2.receivedAt) mustBe true

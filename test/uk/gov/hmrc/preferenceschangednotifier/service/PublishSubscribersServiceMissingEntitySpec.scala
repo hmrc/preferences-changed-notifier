@@ -35,6 +35,7 @@ import play.api.Application
 import play.api.Play.materializer
 import play.api.http.Status.OK
 import play.api.inject.guice.GuiceApplicationBuilder
+import play.api.libs.json.Format
 import uk.gov.hmrc.mongo.test.MongoSupport
 import uk.gov.hmrc.preferenceschangednotifier.WireMockUtil
 import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat.Paper
@@ -173,7 +174,7 @@ class PublishSubscribersServiceMissingEntitySpec
 
     // insert a preference changed document
     val preferenceChangedRes = pcRepo.upsert(pc).futureValue
-    implicit val formatter = MongoJavatimeFormats.instantFormat
+    implicit val formatter: Format[Instant] = MongoJavatimeFormats.instantFormat
 
     def createInvalidWorkitem(): Document =
       Document(

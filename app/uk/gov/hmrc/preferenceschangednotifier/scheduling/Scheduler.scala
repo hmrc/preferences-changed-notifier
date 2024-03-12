@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.preferenceschangednotifier.scheduling
 
-import akka.actor.{ActorSystem, Cancellable}
+import org.apache.pekko.actor.{ActorSystem, Cancellable}
 import play.api.Logging
 import play.api.inject.ApplicationLifecycle
 
