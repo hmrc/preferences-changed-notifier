@@ -16,12 +16,7 @@
 
 package uk.gov.hmrc.preferenceschangednotifier.connectors
 
-import uk.gov.hmrc.http.{
-  HeaderCarrier,
-  HttpClient,
-  HttpResponse,
-  UpstreamErrorResponse
-}
+import uk.gov.hmrc.http.{ HeaderCarrier, HttpClient, HttpResponse, UpstreamErrorResponse }
 import uk.gov.hmrc.preferenceschangednotifier.model.NotifySubscriberRequest
 import uk.gov.hmrc.http.HttpReads.Implicits._
 import scala.concurrent.ExecutionContext
@@ -37,17 +32,13 @@ trait Subscriber {
 
   def taxIdsValid(value: Map[String, String]): Boolean
 
-  def notifySubscriber(request: NotifySubscriberRequest)(
-      implicit hc: HeaderCarrier,
-      ex: ExecutionContext)
-    : Future[Either[UpstreamErrorResponse, HttpResponse]] = {
-
+  def notifySubscriber(
+    request: NotifySubscriberRequest
+  )(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[Either[UpstreamErrorResponse, HttpResponse]] =
     httpClient
-      .POST[NotifySubscriberRequest,
-            Either[UpstreamErrorResponse, HttpResponse]](
+      .POST[NotifySubscriberRequest, Either[UpstreamErrorResponse, HttpResponse]](
         url,
         request,
         Seq("CorrelationId" -> UUID.randomUUID().toString)
       )
-  }
 }

@@ -20,16 +20,13 @@ import org.mongodb.scala.bson.ObjectId
 import org.mongodb.scala.model
 import org.mongodb.scala.model.Filters
 import org.scalatest.Suite
-import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
+import org.scalatest.concurrent.{ IntegrationPatience, ScalaFutures }
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.must.Matchers.{be, convertToAnyMustWrapper}
+import org.scalatest.matchers.must.Matchers.{ be, convertToAnyMustWrapper }
 import play.api.Configuration
 import play.api.test.Helpers
-import uk.gov.hmrc.mongo.test.{DefaultPlayMongoRepositorySupport, MongoSupport}
-import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat.{
-  Digital,
-  Paper
-}
+import uk.gov.hmrc.mongo.test.{ DefaultPlayMongoRepositorySupport, MongoSupport }
+import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat.{ Digital, Paper }
 import uk.gov.hmrc.preferenceschangednotifier.model.PreferencesChanged
 
 import java.time.Instant
@@ -38,17 +35,13 @@ import java.util.concurrent.TimeUnit
 import scala.concurrent.ExecutionContext
 
 class PreferencesChangedRepositorySpec
-    extends AnyFreeSpec
-    with MongoSupport
-    with DefaultPlayMongoRepositorySupport[PreferencesChanged]
-    with ScalaFutures
+    extends AnyFreeSpec with MongoSupport with DefaultPlayMongoRepositorySupport[PreferencesChanged] with ScalaFutures
     with IntegrationPatience { this: Suite =>
 
   implicit val executionContext: ExecutionContext =
     Helpers.stubControllerComponents().executionContext
 
-  val config: Configuration = Configuration(
-    data = ("preferencesChanged.ttl", 14))
+  val config: Configuration = Configuration(data = ("preferencesChanged.ttl", 14))
 
   val repository = new PreferencesChangedRepository(mongoComponent, config)
 
@@ -80,12 +73,14 @@ class PreferencesChangedRepositorySpec
 
     "inserts correctly" in {
       val entityId = UUID.randomUUID().toString
-      val a = PreferencesChanged(_id = new ObjectId(),
-                                 entityId,
-                                 Paper,
-                                 new ObjectId(),
-                                 Instant.now(),
-                                 Map("nino" -> "AB112233D"))
+      val a = PreferencesChanged(
+        _id = new ObjectId(),
+        entityId,
+        Paper,
+        new ObjectId(),
+        Instant.now(),
+        Map("nino" -> "AB112233D")
+      )
       val result = repository.upsert(a).futureValue
       result._id mustNot be(null)
     }
@@ -95,21 +90,19 @@ class PreferencesChangedRepositorySpec
       val objectId = new ObjectId()
       val entityId = UUID.randomUUID().toString
 
-      val a = PreferencesChanged(_id = objectId,
-                                 entityId,
-                                 Paper,
-                                 preferenceId,
-                                 Instant.now(),
-                                 Map("nino" -> "AB112233D"))
+      val a =
+        PreferencesChanged(_id = objectId, entityId, Paper, preferenceId, Instant.now(), Map("nino" -> "AB112233D"))
       val r1 = repository.collection.insertOne(a).toFuture().futureValue
-      r1.wasAcknowledged() mustEqual (true)
+      r1.wasAcknowledged() mustEqual true
 
-      val b = PreferencesChanged(_id = new ObjectId(),
-                                 entityId,
-                                 Digital,
-                                 preferenceId,
-                                 Instant.now(),
-                                 Map("nino" -> "AB112233D"))
+      val b = PreferencesChanged(
+        _id = new ObjectId(),
+        entityId,
+        Digital,
+        preferenceId,
+        Instant.now(),
+        Map("nino" -> "AB112233D")
+      )
       val r2 = repository.upsert(item = b).futureValue
       r2._id must be(objectId)
 
@@ -120,7 +113,7 @@ class PreferencesChangedRepositorySpec
         .toSingle()
         .toFuture()
         .futureValue
-      item.changedValue mustEqual (Digital)
+      item.changedValue mustEqual Digital
       item._id must be(objectId)
     }
 
@@ -133,23 +126,21 @@ class PreferencesChangedRepositorySpec
       val objectId1 = new ObjectId()
       val objectId2 = new ObjectId()
 
-      val a = PreferencesChanged(_id = objectId1,
-                                 entityId1,
-                                 Paper,
-                                 preferenceId1,
-                                 Instant.now(),
-                                 Map("nino" -> "AB112233D"))
+      val a =
+        PreferencesChanged(_id = objectId1, entityId1, Paper, preferenceId1, Instant.now(), Map("nino" -> "AB112233D"))
 
       // Insert object A
       val r1 = repository.collection.insertOne(a).toFuture().futureValue
-      r1.wasAcknowledged() mustEqual (true)
+      r1.wasAcknowledged() mustEqual true
 
-      val b = PreferencesChanged(_id = objectId2,
-                                 entityId2,
-                                 Digital,
-                                 preferenceId2,
-                                 Instant.now(),
-                                 Map("nino" -> "AB112233A"))
+      val b = PreferencesChanged(
+        _id = objectId2,
+        entityId2,
+        Digital,
+        preferenceId2,
+        Instant.now(),
+        Map("nino" -> "AB112233A")
+      )
 
       val r2 = repository.upsert(item = b).futureValue
       r2._id must be(objectId2)
@@ -161,7 +152,7 @@ class PreferencesChangedRepositorySpec
         .toSingle()
         .toFuture()
         .futureValue
-      item.changedValue mustEqual (Paper)
+      item.changedValue mustEqual Paper
       item.entityId must be(entityId1)
     }
   }

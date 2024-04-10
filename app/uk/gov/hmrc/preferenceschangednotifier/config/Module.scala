@@ -16,24 +16,19 @@
 
 package uk.gov.hmrc.preferenceschangednotifier.config
 
-import com.google.inject.{AbstractModule, Provides, Singleton}
-import uk.gov.hmrc.preferenceschangednotifier.connectors.{
-  EpsHodsAdapterConnector,
-  Subscriber,
-  UpdatedPrintSuppressionsConnector
-}
+import com.google.inject.{ AbstractModule, Provides, Singleton }
+import uk.gov.hmrc.preferenceschangednotifier.connectors.{ EpsHodsAdapterConnector, Subscriber, UpdatedPrintSuppressionsConnector }
 
 // $COVERAGE-OFF$Nothing to see here
 class Module extends AbstractModule {
 
-  override def configure(): Unit = {
+  override def configure(): Unit =
     bind(classOf[AppConfig]).asEagerSingleton()
-  }
   @Provides
   @Singleton
   def subscribers(
-      epsHodsAdapterConnector: EpsHodsAdapterConnector,
-      updatedPrintSuppressionConnector: UpdatedPrintSuppressionsConnector
+    epsHodsAdapterConnector: EpsHodsAdapterConnector,
+    updatedPrintSuppressionConnector: UpdatedPrintSuppressionsConnector
   ): Seq[Subscriber] =
     Seq(epsHodsAdapterConnector, updatedPrintSuppressionConnector)
 }

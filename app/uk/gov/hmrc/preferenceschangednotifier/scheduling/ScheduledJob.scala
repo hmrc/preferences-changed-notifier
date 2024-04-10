@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.preferenceschangednotifier.scheduling
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ ExecutionContext, Future }
 
 trait ScheduledJob extends SchedulingConfig {
 

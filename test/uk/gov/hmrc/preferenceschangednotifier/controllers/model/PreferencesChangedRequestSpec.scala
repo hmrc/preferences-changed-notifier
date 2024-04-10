@@ -17,7 +17,7 @@
 package uk.gov.hmrc.preferenceschangednotifier.controllers.model
 
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.must.Matchers.{convertToAnyMustWrapper, equal}
+import org.scalatest.matchers.must.Matchers.{ convertToAnyMustWrapper, equal }
 import play.api.libs.json.Json
 import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat.Paper
 
@@ -56,18 +56,17 @@ class PreferencesChangedRequestSpec extends AnyFreeSpec {
   }
 
   private def createJson(
-      changedValue: String = "paper",
-      preferenceId: String = "65263df8d843592d74a2bfc6",
-      updatedAt: String = "2023-10-11T01:30:00.000Z",
-      taxIds: String = """ { "nino" : "AB112233C" }"""
-  ) = {
+    changedValue: String = "paper",
+    preferenceId: String = "65263df8d843592d74a2bfc6",
+    updatedAt: String = "2023-10-11T01:30:00.000Z",
+    taxIds: String = """ { "nino" : "AB112233C" }"""
+  ) =
     Json.parse(s"""{
-        |  "changedValue" : "$changedValue",
-        |  "preferenceId" : "$preferenceId",
-        |  "entityId"     : "${UUID.randomUUID().toString}",
-        |  "updatedAt"    : "$updatedAt",
-        |  "taxIds"       :  $taxIds
-        |}
-        |""".stripMargin)
-  }
+                  |  "changedValue" : "$changedValue",
+                  |  "preferenceId" : "$preferenceId",
+                  |  "entityId"     : "${UUID.randomUUID().toString}",
+                  |  "updatedAt"    : "$updatedAt",
+                  |  "taxIds"       :  $taxIds
+                  |}
+                  |""".stripMargin)
 }

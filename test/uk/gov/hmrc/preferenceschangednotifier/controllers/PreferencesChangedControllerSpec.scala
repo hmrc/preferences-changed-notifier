@@ -20,15 +20,15 @@ import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.Materializer
 import cats.data.EitherT
 import org.mockito.ArgumentMatchers.any
-import org.mockito.MockitoSugar.{mock, when}
+import org.mockito.MockitoSugar.{ mock, when }
 import org.mongodb.scala.bson.ObjectId
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers.convertToAnyMustWrapper
 import org.scalatest.matchers.should.Matchers
-import play.api.http.{ContentTypes, Status}
+import play.api.http.{ ContentTypes, Status }
 import play.api.libs.json.Json
 import play.api.test.Helpers._
-import play.api.test.{FakeHeaders, FakeRequest, Helpers}
+import play.api.test.{ FakeHeaders, FakeRequest, Helpers }
 import uk.gov.hmrc.preferenceschangednotifier.controllers.model.PreferencesChangedRequest
 import uk.gov.hmrc.preferenceschangednotifier.service.PreferencesChangedService
 import uk.gov.hmrc.preferenceschangednotifier.model.ServerError
@@ -45,9 +45,7 @@ class PreferencesChangedControllerSpec extends AnyFreeSpec with Matchers {
   implicit def ec: ExecutionContext = global
 
   private val service = mock[PreferencesChangedService]
-  private val controller = new PreferencesChangedController(
-    Helpers.stubControllerComponents(),
-    service)
+  private val controller = new PreferencesChangedController(Helpers.stubControllerComponents(), service)
 
   private def createFakePostRequest(reqBody: String) =
     FakeRequest(
@@ -82,12 +80,12 @@ class PreferencesChangedControllerSpec extends AnyFreeSpec with Matchers {
     "return 400 with a badly formatted date" in {
       val reqBody =
         s"""{
-          |"changedValue": "paper",
-          |"preferenceId": "5555",
-          |"entityId"    : "${UUID.randomUUID().toString}",
-          |"updatedAt"   : "023-10-11T01:30:00.000Z",
-          |"taxIds"      : {"nino":"AB112233C"}
-          |}""".stripMargin
+           |"changedValue": "paper",
+           |"preferenceId": "5555",
+           |"entityId"    : "${UUID.randomUUID().toString}",
+           |"updatedAt"   : "023-10-11T01:30:00.000Z",
+           |"taxIds"      : {"nino":"AB112233C"}
+           |}""".stripMargin
 
       val fakePostRequest =
         createFakePostRequest(reqBody)
@@ -97,8 +95,7 @@ class PreferencesChangedControllerSpec extends AnyFreeSpec with Matchers {
 
       val result = controller.preferencesChanged()(fakePostRequest)
 
-      contentAsString(result) should startWith(
-        "Invalid PreferencesChangedRequest payload")
+      contentAsString(result) should startWith("Invalid PreferencesChangedRequest payload")
       status(result) shouldBe Status.BAD_REQUEST
     }
 
@@ -106,13 +103,13 @@ class PreferencesChangedControllerSpec extends AnyFreeSpec with Matchers {
       val pid = new ObjectId()
       val reqBody =
         s"""{
-            |  "changedValue" : "paper",
-            |  "preferenceId" : "${pid.toString}",
-            |  "entityId"     : "${UUID.randomUUID().toString}",
-            |  "updatedAt"    : "2023-10-11T09:30:00.000Z",
-            |  "taxIds"       : { "nino" : "AB112233C" }
-            |}
-            |""".stripMargin
+           |  "changedValue" : "paper",
+           |  "preferenceId" : "${pid.toString}",
+           |  "entityId"     : "${UUID.randomUUID().toString}",
+           |  "updatedAt"    : "2023-10-11T09:30:00.000Z",
+           |  "taxIds"       : { "nino" : "AB112233C" }
+           |}
+           |""".stripMargin
 
       val fakePostRequest =
         createFakePostRequest(reqBody)

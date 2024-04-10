@@ -17,10 +17,10 @@
 package uk.gov.hmrc.preferenceschangednotifier.scheduling
 
 import play.api.Logger
-import uk.gov.hmrc.mongo.lock.{LockRepository, LockService}
+import uk.gov.hmrc.mongo.lock.{ LockRepository, LockService }
 
 import scala.concurrent.duration.Duration
-import scala.concurrent.{ExecutionContext, Future, duration}
+import scala.concurrent.{ ExecutionContext, Future, duration }
 
 trait LockedScheduledJob extends ScheduledJob {
   private val logger: Logger = Logger(getClass)
@@ -37,11 +37,9 @@ trait LockedScheduledJob extends ScheduledJob {
     override val ttl: duration.Duration = releaseLockAfter
   }
 
-  final override def execute(implicit ec: ExecutionContext): Future[Result] = {
-
+  final override def execute(implicit ec: ExecutionContext): Future[Result] =
     lockService.withLock {
-      logger.debug(
-        s"Scheduled job '${this.getClass.getSimpleName}' is executing...")
+      logger.debug(s"Scheduled job '${this.getClass.getSimpleName}' is executing...")
       executeInLock
     } map {
       case Some(Result(msg)) =>
@@ -51,5 +49,4 @@ trait LockedScheduledJob extends ScheduledJob {
         logger.debug(s)
         Result(s)
     }
-  }
 }

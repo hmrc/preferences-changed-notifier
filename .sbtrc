@@ -1,0 +1,2 @@
+alias fmt=;scalafmt ; Test/scalafmt; it/Test/scalafmt
+alias buildall=;clean;compile;coverage;test;it/test;scalastyle;coverageReport

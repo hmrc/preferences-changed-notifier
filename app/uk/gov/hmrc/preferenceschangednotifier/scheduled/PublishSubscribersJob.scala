@@ -17,24 +17,21 @@
 package uk.gov.hmrc.preferenceschangednotifier.scheduled
 
 import org.apache.commons.lang3.time.StopWatch
-import play.api.{Configuration, Logger}
+import play.api.{ Configuration, Logger }
 import uk.gov.hmrc.mongo.lock.LockRepository
-import uk.gov.hmrc.preferenceschangednotifier.scheduling.{
-  LockedScheduledJob,
-  Result
-}
+import uk.gov.hmrc.preferenceschangednotifier.scheduling.{ LockedScheduledJob, Result }
 import uk.gov.hmrc.preferenceschangednotifier.service.PublishSubscribersService
 
-import javax.inject.{Inject, Singleton}
+import javax.inject.{ Inject, Singleton }
 import scala.concurrent.duration.Duration
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ ExecutionContext, Future }
 
 // $COVERAGE-OFF$Disabling test coverage
 @Singleton
-class PublishSubscribersJob @Inject()(
-    lockRepository: LockRepository,
-    override val configuration: Configuration,
-    service: PublishSubscribersService
+class PublishSubscribersJob @Inject() (
+  lockRepository: LockRepository,
+  override val configuration: Configuration,
+  service: PublishSubscribersService
 ) extends LockedScheduledJob {
 
   private val logger = Logger(getClass)
@@ -50,11 +47,10 @@ class PublishSubscribersJob @Inject()(
     if (taskEnabled) {
       val stopWatch = StopWatch.createStarted()
       val result = service.execute
-      result.foreach(r => {
+      result.foreach { r =>
         stopWatch.stop()
-        logger.debug(
-          s"Job $name complete: [stopwatch $stopWatch] [${r.message}]")
-      })
+        logger.debug(s"Job $name complete: [stopwatch $stopWatch] [${r.message}]")
+      }
       result
     } else {
       Future(Result(s"$name job is not enabled"))

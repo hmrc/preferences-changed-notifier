@@ -17,49 +17,31 @@
 package test.uk.gov.hmrc.preferenceschangednotifier.service
 
 import org.mongodb.scala.bson.ObjectId
-import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
+import org.scalatest.concurrent.{ IntegrationPatience, ScalaFutures }
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
-import org.scalatest.{BeforeAndAfterEach, EitherValues, TestSuite}
+import org.scalatest.{ BeforeAndAfterEach, EitherValues, TestSuite }
 import org.scalatestplus.play.guice.GuiceOneServerPerSuite
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.Application
 import play.api.test.Injecting
 import uk.gov.hmrc.mongo.test.MongoSupport
-import uk.gov.hmrc.preferenceschangednotifier.connectors.{
-  EpsHodsAdapterConnector,
-  Subscriber
-}
+import uk.gov.hmrc.preferenceschangednotifier.connectors.{ EpsHodsAdapterConnector, Subscriber }
 import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat.Paper
-import uk.gov.hmrc.preferenceschangednotifier.model.{
-  PreferencesChanged,
-  PreferencesChangedRef
-}
-import uk.gov.hmrc.preferenceschangednotifier.repository.{
-  PreferencesChangedRepository,
-  PreferencesChangedWorkItemRepository
-}
+import uk.gov.hmrc.preferenceschangednotifier.model.{ PreferencesChanged, PreferencesChangedRef }
+import uk.gov.hmrc.preferenceschangednotifier.repository.{ PreferencesChangedRepository, PreferencesChangedWorkItemRepository }
 import uk.gov.hmrc.preferenceschangednotifier.service.PublishSubscribersService
 
 import java.time.Instant
 import java.util.UUID
 
 class PublishSubscribersServiceISpec
-    extends AnyFreeSpec
-    with Matchers
-    with ScalaFutures
-    with MongoSupport
-    with BeforeAndAfterEach
-    with EitherValues
-    with TestSuite
-    with GuiceOneServerPerSuite
-    with IntegrationPatience
-    with Injecting {
+    extends AnyFreeSpec with Matchers with ScalaFutures with MongoSupport with BeforeAndAfterEach with EitherValues
+    with TestSuite with GuiceOneServerPerSuite with IntegrationPatience with Injecting {
   spec =>
 
   override implicit lazy val app: Application = new GuiceApplicationBuilder()
-    .configure("metrics.enabled" -> false,
-               "preferencesChanged.retryFailedAfter" -> 10)
+    .configure("metrics.enabled" -> false, "preferencesChanged.retryFailedAfter" -> 10)
     .build()
 
   private val service = inject[PublishSubscribersService]
@@ -78,15 +60,13 @@ class PublishSubscribersServiceISpec
     super.beforeEach()
   }
 
-  private def createPcr(preferenceChangedId: ObjectId,
-                        preferenceId: ObjectId,
-                        entityId: String,
-                        subscriber: String) = {
-    PreferencesChangedRef(preferenceChangedId = preferenceChangedId,
-                          preferenceId = preferenceId,
-                          entityId = entityId,
-                          subscriber = subscriber)
-  }
+  private def createPcr(preferenceChangedId: ObjectId, preferenceId: ObjectId, entityId: String, subscriber: String) =
+    PreferencesChangedRef(
+      preferenceChangedId = preferenceChangedId,
+      preferenceId = preferenceId,
+      entityId = entityId,
+      subscriber = subscriber
+    )
 
   "publish subscribers service" - {
 
@@ -96,13 +76,14 @@ class PublishSubscribersServiceISpec
       val entityId = UUID.randomUUID().toString
 
       val pc =
-        PreferencesChanged(_id = new ObjectId,
-                           changedValue = Paper,
-                           preferenceId = prefId,
-                           entityId = entityId,
-                           updatedAt = Instant.now(),
-                           taxIds =
-                             Map("nino" -> "YY000200A", "sautr" -> "SAUTR1"))
+        PreferencesChanged(
+          _id = new ObjectId,
+          changedValue = Paper,
+          preferenceId = prefId,
+          entityId = entityId,
+          updatedAt = Instant.now(),
+          taxIds = Map("nino" -> "YY000200A", "sautr" -> "SAUTR1")
+        )
 
       val preferenceChangedRes = pcRepo.upsert(pc).futureValue
       val pcrEps =
@@ -119,10 +100,8 @@ class PublishSubscribersServiceISpec
       countItems must be(2)
 
       val result = service.execute.futureValue
-      result.message must include(
-        s"Completed & deleted workitem: ${wi1.id} successfully: HttpResponse status=200")
-      result.message must include(
-        s"Completed & deleted workitem: ${wi2.id} successfully: HttpResponse status=200")
+      result.message must include(s"Completed & deleted workitem: ${wi1.id} successfully: HttpResponse status=200")
+      result.message must include(s"Completed & deleted workitem: ${wi2.id} successfully: HttpResponse status=200")
 
       val postExecuteCount =
         pcwiRepo.collection.countDocuments().toFuture().futureValue
@@ -134,12 +113,14 @@ class PublishSubscribersServiceISpec
       val prefId = new ObjectId()
       val entityId = UUID.randomUUID().toString
 
-      val pc = PreferencesChanged(_id = new ObjectId,
-                                  entityId = entityId,
-                                  changedValue = Paper,
-                                  preferenceId = prefId,
-                                  updatedAt = Instant.now(),
-                                  taxIds = Map("nino" -> "YY000200A"))
+      val pc = PreferencesChanged(
+        _id = new ObjectId,
+        entityId = entityId,
+        changedValue = Paper,
+        preferenceId = prefId,
+        updatedAt = Instant.now(),
+        taxIds = Map("nino" -> "YY000200A")
+      )
 
       val preferenceChangedRes = pcRepo.upsert(pc).futureValue
       val pcrEps =
@@ -157,8 +138,7 @@ class PublishSubscribersServiceISpec
 
       val result = service.execute.futureValue
 
-      result.message must include(
-        s"Completed & deleted workitem: ${wi1.id} successfully: HttpResponse status=200")
+      result.message must include(s"Completed & deleted workitem: ${wi1.id} successfully: HttpResponse status=200")
       result.message must include(s"permanently failed")
       result.message must include(s"Missing SaUtr")
 

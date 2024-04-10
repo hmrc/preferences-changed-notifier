@@ -16,37 +16,34 @@
 
 package uk.gov.hmrc.preferenceschangednotifier.scheduling
 
-import org.apache.pekko.actor.{ActorSystem, Cancellable}
+import org.apache.pekko.actor.{ ActorSystem, Cancellable }
 import play.api.Logging
 import play.api.inject.ApplicationLifecycle
 
-import javax.inject.{Inject, Singleton}
-import scala.concurrent.{ExecutionContext, Future}
+import javax.inject.{ Inject, Singleton }
+import scala.concurrent.{ ExecutionContext, Future }
 
 @Singleton
-class Scheduler @Inject()(
-    actorSystem: ActorSystem,
-    applicationLifecycle: ApplicationLifecycle,
-    scheduledJobs: ScheduledJobs
+class Scheduler @Inject() (
+  actorSystem: ActorSystem,
+  applicationLifecycle: ApplicationLifecycle,
+  scheduledJobs: ScheduledJobs
 )(implicit ec: ExecutionContext)
     extends Logging {
 
   val runningJobs: Iterable[Cancellable] = scheduledJobs.jobs.map { job =>
-    logger.info(s"Scheduling job [${job}]")
+    logger.info(s"Scheduling job [$job]")
 
-    actorSystem.scheduler.scheduleWithFixedDelay(job.initialDelay,
-                                                 job.interval)(new Runnable() {
+    actorSystem.scheduler.scheduleWithFixedDelay(job.initialDelay, job.interval)(new Runnable() {
       override def run(): Unit =
         job.execute.map { _ =>
           logger.info(s"Scheduled Job [${job.name}]: Completed Successfully")
-        } recover {
-          case t: Throwable =>
-            logger.error(s"Scheduled Job [${job.name}]: Failed", t)
+        } recover { case t: Throwable =>
+          logger.error(s"Scheduled Job [${job.name}]: Failed", t)
         }
     })
   }
 
-  applicationLifecycle.addStopHook(() =>
-    Future.successful(runningJobs.foreach(_.cancel())))
+  applicationLifecycle.addStopHook(() => Future.successful(runningJobs.foreach(_.cancel())))
 
 }

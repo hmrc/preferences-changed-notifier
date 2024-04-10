@@ -20,56 +20,43 @@ import cats.data.EitherT
 import org.bson.types.ObjectId
 import org.mongodb.scala.model.Filters
 import play.api.Logging
-import uk.gov.hmrc.mongo.workitem.{ResultStatus, WorkItem}
+import uk.gov.hmrc.mongo.workitem.{ ResultStatus, WorkItem }
 import uk.gov.hmrc.preferenceschangednotifier.connectors.Subscriber
 import uk.gov.hmrc.preferenceschangednotifier.controllers.model.PreferencesChangedRequest
-import uk.gov.hmrc.preferenceschangednotifier.model.{
-  ErrorResponse,
-  PersistenceError,
-  PreferencesChanged,
-  PreferencesChangedRef,
-  RequestError
-}
-import uk.gov.hmrc.preferenceschangednotifier.repository.{
-  PreferencesChangedRepository,
-  PreferencesChangedWorkItemRepository
-}
+import uk.gov.hmrc.preferenceschangednotifier.model.{ ErrorResponse, PersistenceError, PreferencesChanged, PreferencesChangedRef, RequestError }
+import uk.gov.hmrc.preferenceschangednotifier.repository.{ PreferencesChangedRepository, PreferencesChangedWorkItemRepository }
 
 import java.time.Instant
 import java.time.temporal.ChronoUnit
-import javax.inject.{Inject, Singleton}
+import javax.inject.{ Inject, Singleton }
 import scala.concurrent.duration.Duration
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success, Try}
+import scala.concurrent.{ ExecutionContext, Future }
+import scala.util.{ Failure, Success, Try }
 
 @Singleton
-class PreferencesChangedService @Inject()(
-    pcRepo: PreferencesChangedRepository,
-    pcWorkItemRepo: PreferencesChangedWorkItemRepository,
-    subscribers: Seq[Subscriber]
+class PreferencesChangedService @Inject() (
+  pcRepo: PreferencesChangedRepository,
+  pcWorkItemRepo: PreferencesChangedWorkItemRepository,
+  subscribers: Seq[Subscriber]
 )(implicit val ec: ExecutionContext)
     extends Logging {
-  def completeAndDelete(
-      workItem: WorkItem[PreferencesChangedRef]): Future[Boolean] =
+  def completeAndDelete(workItem: WorkItem[PreferencesChangedRef]): Future[Boolean] =
     pcWorkItemRepo.completeAndDelete(workItem.id)
 
-  def completeWithStatus(workItem: WorkItem[PreferencesChangedRef],
-                         status: ResultStatus): Future[Boolean] =
+  def completeWithStatus(workItem: WorkItem[PreferencesChangedRef], status: ResultStatus): Future[Boolean] =
     pcWorkItemRepo.complete(workItem.id, status)
 
-  def find(preferenceChangedId: ObjectId)
-    : Future[Either[String, PreferencesChanged]] =
+  def find(preferenceChangedId: ObjectId): Future[Either[String, PreferencesChanged]] =
     pcRepo.collection
       .find(Filters.eq("_id", preferenceChangedId))
       .toSingle()
       .toFutureOption()
       .map(a =>
         Either
-          .cond(a.isDefined, a.get, s"_id ${preferenceChangedId} not found"))
+          .cond(a.isDefined, a.get, s"_id $preferenceChangedId not found")
+      )
 
-  def pull(retryFailedAfter: Duration)
-    : Future[Option[WorkItem[PreferencesChangedRef]]] = {
-
+  def pull(retryFailedAfter: Duration): Future[Option[WorkItem[PreferencesChangedRef]]] =
     pcWorkItemRepo
       .pullOutstanding(
         Instant.now().minus(retryFailedAfter.toSeconds, ChronoUnit.SECONDS),
@@ -77,31 +64,28 @@ class PreferencesChangedService @Inject()(
       )
       .recoverWith {
         case ex: RuntimeException
-            if (ex.getMessage contains ("Failed to parse json as uk.gov.hmrc.mongo.workitem.WorkItem")) =>
+            if ex.getMessage contains "Failed to parse json as uk.gov.hmrc.mongo.workitem.WorkItem" =>
           logger.debug(s"Trying again $ex")
           pull(retryFailedAfter)
         case ex =>
           logger.debug(s"Failed $ex")
           throw ex
       }
-  }
 
-  def preferenceChanged(pcRequest: PreferencesChangedRequest)
-    : EitherT[Future, ErrorResponse, Unit] = {
-
+  def preferenceChanged(pcRequest: PreferencesChangedRequest): EitherT[Future, ErrorResponse, Unit] =
     for {
       pcId <- EitherT(addPreferenceChanged(pcRequest))
       res <- EitherT(
-        addPreferenceChangedWorkItems(pcId,
-                                      new ObjectId(pcRequest.preferenceId),
-                                      pcRequest.entityId,
-                                      pcRequest.taxIds))
+               addPreferenceChangedWorkItems(
+                 pcId,
+                 new ObjectId(pcRequest.preferenceId),
+                 pcRequest.entityId,
+                 pcRequest.taxIds
+               )
+             )
     } yield res
 
-  }
-
-  private def addPreferenceChanged(pcRequest: PreferencesChangedRequest)
-    : Future[Either[ErrorResponse, ObjectId]] = {
+  private def addPreferenceChanged(pcRequest: PreferencesChangedRequest): Future[Either[ErrorResponse, ObjectId]] =
     Try {
       updateRepo(PreferencesChanged.from(pcRequest))
     } match {
@@ -114,10 +98,9 @@ class PreferencesChangedService @Inject()(
             Future.successful(Left(PersistenceError(ex.toString)))
         }
     }
-  }
 
   // Add or update the preference changed document
-  private def updateRepo(req: PreferencesChanged) = {
+  private def updateRepo(req: PreferencesChanged) =
     pcRepo
       .upsert(req)
       .map { doc =>
@@ -128,18 +111,17 @@ class PreferencesChangedService @Inject()(
         logger.error(s"Recover during addPreferenceChanged $ex")
         Left(PersistenceError(ex.toString))
       }
-  }
 
   private def filterSubscribers(taxIds: Map[String, String]) =
     subscribers.filter(_.taxIdsValid(taxIds))
 
   // Create a workitem for the specified preference changed
   private def addPreferenceChangedWorkItems(
-      pcId: ObjectId,
-      pId: ObjectId,
-      entityId: String,
-      taxIds: Map[String, String]): Future[Either[ErrorResponse, Unit]] = {
-
+    pcId: ObjectId,
+    pId: ObjectId,
+    entityId: String,
+    taxIds: Map[String, String]
+  ): Future[Either[ErrorResponse, Unit]] =
     filterSubscribers(taxIds) match {
       case Seq() =>
         Future.successful(Right(()))
@@ -158,18 +140,15 @@ class PreferencesChangedService @Inject()(
             }
           }
           .map { seq =>
-            {
-              if (seq.exists(_.isLeft)) {
-                Left(
-                  seq
-                    .collect { case Left(ex) => ex }
-                    .fold(PersistenceError(""))((acc, next) =>
-                      PersistenceError(s"${acc.message}\n${next.message}")))
-              } else {
-                Right(())
-              }
+            if (seq.exists(_.isLeft)) {
+              Left(
+                seq
+                  .collect { case Left(ex) => ex }
+                  .fold(PersistenceError(""))((acc, next) => PersistenceError(s"${acc.message}\n${next.message}"))
+              )
+            } else {
+              Right(())
             }
           }
     }
-  }
 }

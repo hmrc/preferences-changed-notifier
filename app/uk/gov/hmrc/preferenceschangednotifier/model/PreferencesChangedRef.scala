@@ -17,14 +17,14 @@
 package uk.gov.hmrc.preferenceschangednotifier.model
 
 import org.mongodb.scala.bson.ObjectId
-import play.api.libs.json.{Format, Json, OFormat, OWrites, Reads}
+import play.api.libs.json.{ Format, Json, OFormat, OWrites, Reads }
 import uk.gov.hmrc.mongo.play.json.formats.MongoFormats
 
 case class PreferencesChangedRef(
-    preferenceChangedId: ObjectId, // reference to preferenceChanged._id
-    preferenceId: ObjectId,
-    entityId: String, // INDEX
-    subscriber: String
+  preferenceChangedId: ObjectId, // reference to preferenceChanged._id
+  preferenceId: ObjectId,
+  entityId: String, // INDEX
+  subscriber: String
 )
 
 object PreferencesChangedRef {

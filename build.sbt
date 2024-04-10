@@ -4,7 +4,6 @@ val appName: String = "preferences-changed-notifier"
 
 ThisBuild / majorVersion := 0
 ThisBuild / scalaVersion := "2.13.12"
-ThisBuild / scalafmtOnCompile := true
 
 lazy val microservice = Project("preferences-changed-notifier", file("."))
   .enablePlugins(play.sbt.PlayScala, SbtDistributablesPlugin)
@@ -24,6 +23,10 @@ lazy val it = Project(id = "it", base = file("it"))
   .dependsOn(microservice % "test->test") // the "test->test" allows reusing test code and test dependencies
   .settings(libraryDependencies ++= AppDependencies.it)
 
-addCommandAlias(
-  "buildall",
-  ";clean;compile;coverage;test;it/test;scalastyle;coverageReport")
+Test / test := (Test / test)
+  .dependsOn(scalafmtCheckAll)
+  .value
+
+it / test := (it / Test / test)
+  .dependsOn(scalafmtCheckAll, it/scalafmtCheckAll)
+  .value

@@ -31,10 +31,7 @@ class PreferencesChangedRefSpec extends AnyFreeSpec {
     "preferencesChangedId ObjectId writes correctly" in {
       val preferenceChangedId = new ObjectId()
       val entityId = UUID.randomUUID().toString
-      val a = PreferencesChangedRef(preferenceChangedId,
-                                    new ObjectId(),
-                                    entityId,
-                                    "sub1")
+      val a = PreferencesChangedRef(preferenceChangedId, new ObjectId(), entityId, "sub1")
 
       val writer = PreferencesChangedRef.writes
       val json = writer.writes(a)
@@ -77,11 +74,11 @@ class PreferencesChangedRefSpec extends AnyFreeSpec {
 
       val strJson =
         s"""{
-          |  "preferenceChangedId" : { "$$oid" : "${preferenceChangedId.toString}" },
-          |  "preferenceId"        : { "$$oid" :  "${new ObjectId()}" },
-          |  "entityId"            : "$entityId",
-          |  "subscriber"          : "sub1"
-          |}""".stripMargin
+           |  "preferenceChangedId" : { "$$oid" : "${preferenceChangedId.toString}" },
+           |  "preferenceId"        : { "$$oid" :  "${new ObjectId()}" },
+           |  "entityId"            : "$entityId",
+           |  "subscriber"          : "sub1"
+           |}""".stripMargin
 
       val pcr = Json.parse(strJson).as[PreferencesChangedRef]
 

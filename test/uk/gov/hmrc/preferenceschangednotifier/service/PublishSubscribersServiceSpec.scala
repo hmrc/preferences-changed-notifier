@@ -16,55 +16,38 @@
 
 package uk.gov.hmrc.preferenceschangednotifier.service
 
-import com.github.tomakehurst.wiremock.client.WireMock.{
-  aResponse,
-  givenThat,
-  post,
-  urlEqualTo
-}
+import com.github.tomakehurst.wiremock.client.WireMock.{ aResponse, givenThat, post, urlEqualTo }
 import org.mongodb.scala.bson.ObjectId
-import org.scalatest.{BeforeAndAfterEach, EitherValues}
-import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
+import org.scalatest.{ BeforeAndAfterEach, EitherValues }
+import org.scalatest.concurrent.{ IntegrationPatience, ScalaFutures }
 import org.scalatestplus.play.PlaySpec
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import play.api.Application
-import play.api.http.Status.{BAD_REQUEST, CREATED, INTERNAL_SERVER_ERROR, OK}
+import play.api.http.Status.{ BAD_REQUEST, CREATED, INTERNAL_SERVER_ERROR, OK }
 import play.api.inject.guice.GuiceApplicationBuilder
 import uk.gov.hmrc.mongo.test.MongoSupport
 import uk.gov.hmrc.preferenceschangednotifier.WireMockUtil
 import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat.Paper
-import uk.gov.hmrc.preferenceschangednotifier.model.{
-  PreferencesChanged,
-  PreferencesChangedRef
-}
-import uk.gov.hmrc.preferenceschangednotifier.repository.{
-  PreferencesChangedRepository,
-  PreferencesChangedWorkItemRepository
-}
+import uk.gov.hmrc.preferenceschangednotifier.model.{ PreferencesChanged, PreferencesChangedRef }
+import uk.gov.hmrc.preferenceschangednotifier.repository.{ PreferencesChangedRepository, PreferencesChangedWorkItemRepository }
 
 import java.time.Instant
 import java.util.UUID
 import scala.concurrent.ExecutionContext
 
 class PublishSubscribersServiceSpec
-    extends PlaySpec
-    with ScalaFutures
-    with GuiceOneAppPerSuite
-    with IntegrationPatience
-    with BeforeAndAfterEach
-    with EitherValues
-    with WireMockUtil
-    with MongoSupport {
+    extends PlaySpec with ScalaFutures with GuiceOneAppPerSuite with IntegrationPatience with BeforeAndAfterEach
+    with EitherValues with WireMockUtil with MongoSupport {
 
   override def fakeApplication(): Application =
     GuiceApplicationBuilder()
       .configure(
-        "metrics.enabled" -> false,
-        "microservice.services.eps-hods-adapter.host" -> "localhost",
-        "microservice.services.eps-hods-adapter.port" -> "22222",
+        "metrics.enabled"                                       -> false,
+        "microservice.services.eps-hods-adapter.host"           -> "localhost",
+        "microservice.services.eps-hods-adapter.port"           -> "22222",
         "microservice.services.updated-print-suppressions.host" -> "localhost",
         "microservice.services.updated-print-suppressions.port" -> "33333",
-        "featureFlag.useUPS" -> false
+        "featureFlag.useUPS"                                    -> false
       )
       .build()
 
@@ -87,12 +70,12 @@ class PublishSubscribersServiceSpec
     "return correctly when stub returns 200 OK" in new TestCase {
       givenThat(
         post(urlEqualTo("/eps-hods-adapter/preferences/notify-subscriber"))
-          .willReturn(aResponse().withStatus(OK)))
+          .willReturn(aResponse().withStatus(OK))
+      )
 
       val result = service.execute.futureValue
 
-      result.message must include(
-        s"Completed & deleted workitem: ${wi1.id} successfully: HttpResponse status=200")
+      result.message must include(s"Completed & deleted workitem: ${wi1.id} successfully: HttpResponse status=200")
     }
 
     "return correctly when stub returns 4XX error" in new TestCase {
@@ -101,7 +84,9 @@ class PublishSubscribersServiceSpec
           .willReturn(
             aResponse()
               .withStatus(BAD_REQUEST)
-              .withBody("A bad_request message")))
+              .withBody("A bad_request message")
+          )
+      )
 
       private val result = service.execute.futureValue
       result.message must include("permanently failed")
@@ -114,7 +99,9 @@ class PublishSubscribersServiceSpec
           .willReturn(
             aResponse()
               .withStatus(INTERNAL_SERVER_ERROR)
-              .withBody("An internal_server_error message")))
+              .withBody("An internal_server_error message")
+          )
+      )
 
       private val result = service.execute.futureValue
 
@@ -128,24 +115,23 @@ class PublishSubscribersServiceSpec
           .willReturn(
             aResponse()
               .withStatus(CREATED)
-              .withBody("An internal_server_error message")))
+              .withBody("An internal_server_error message")
+          )
+      )
 
       private val result = service.execute.futureValue
 
-      result.message must include(
-        s"Completed & deleted workitem: ${wi1.id} successfully: HttpResponse status=${CREATED}")
+      result.message must include(s"Completed & deleted workitem: ${wi1.id} successfully: HttpResponse status=$CREATED")
     }
   }
 
-  private def createPcr(preferenceChangedId: ObjectId,
-                        entityId: String,
-                        preferenceId: ObjectId,
-                        subscriber: String) = {
-    PreferencesChangedRef(preferenceChangedId = preferenceChangedId,
-                          preferenceId = preferenceId,
-                          entityId = entityId,
-                          subscriber = subscriber)
-  }
+  private def createPcr(preferenceChangedId: ObjectId, entityId: String, preferenceId: ObjectId, subscriber: String) =
+    PreferencesChangedRef(
+      preferenceChangedId = preferenceChangedId,
+      preferenceId = preferenceId,
+      entityId = entityId,
+      subscriber = subscriber
+    )
 
   class TestCase {
     // push an item into the pc repo
@@ -158,7 +144,8 @@ class PublishSubscribersServiceSpec
       preferenceId = prefId,
       entityId = entityId,
       updatedAt = Instant.now(),
-      taxIds = Map("nino" -> "AB112233C", "sautr" -> "sautr1"))
+      taxIds = Map("nino" -> "AB112233C", "sautr" -> "sautr1")
+    )
 
     // insert a preference changed document
     val preferenceChangedRes =
@@ -166,10 +153,7 @@ class PublishSubscribersServiceSpec
 
     val pcr1 =
       createPcr(preferenceChangedRes._id, entityId, prefId, "EpsHodsAdapter")
-    val pcr2 = createPcr(preferenceChangedRes._id,
-                         entityId,
-                         prefId,
-                         "UpdatedPrintSuppressionAdapter")
+    val pcr2 = createPcr(preferenceChangedRes._id, entityId, prefId, "UpdatedPrintSuppressionAdapter")
 
     // insert a workitem
     val wi1 = pcwiRepo.pushUpdated(pcr1).futureValue

@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.preferenceschangednotifier.controllers.model
 
-import play.api.libs.json.{JsError, JsString, JsSuccess, JsValue, Reads, Writes}
+import play.api.libs.json.{ JsError, JsString, JsSuccess, JsValue, Reads, Writes }
 
 import java.time.Instant
 import scala.util.Try

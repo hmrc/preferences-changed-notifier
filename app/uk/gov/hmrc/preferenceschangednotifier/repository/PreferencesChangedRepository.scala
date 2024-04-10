@@ -17,36 +17,25 @@
 package uk.gov.hmrc.preferenceschangednotifier.repository
 
 import org.mongodb.scala.model.ReturnDocument.AFTER
-import org.mongodb.scala.model.{
-  Filters,
-  FindOneAndUpdateOptions,
-  IndexModel,
-  IndexOptions,
-  Indexes,
-  Updates
-}
-import play.api.{Configuration, Logger}
+import org.mongodb.scala.model.{ Filters, FindOneAndUpdateOptions, IndexModel, IndexOptions, Indexes, Updates }
+import play.api.{ Configuration, Logger }
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
 import uk.gov.hmrc.preferenceschangednotifier.model.PreferencesChanged
 
 import java.util.concurrent.TimeUnit
-import javax.inject.{Inject, Singleton}
-import scala.concurrent.{ExecutionContext, Future}
+import javax.inject.{ Inject, Singleton }
+import scala.concurrent.{ ExecutionContext, Future }
 
-/**
-  * Keeps a record of those preferences that have changed their optin/optout
-  * values. So if someone optsin, they will have Digital delivery or
-  * optout will have Paper delivery. This is required because several downstream
-  * systems want to know if the value has been changed.
-  * NPS: Via the eps-Hods-adapter service
-  * UPS: Via the updated-print-suppression service
+/** Keeps a record of those preferences that have changed their optin/optout values. So if someone optsin, they will
+  * have Digital delivery or optout will have Paper delivery. This is required because several downstream systems want
+  * to know if the value has been changed. NPS: Via the eps-Hods-adapter service UPS: Via the updated-print-suppression
+  * service
   */
 @Singleton
-class PreferencesChangedRepository @Inject()(
-    mongo: MongoComponent,
-    config: Configuration)(implicit ec: ExecutionContext)
-    extends PlayMongoRepository[PreferencesChanged](
+class PreferencesChangedRepository @Inject() (mongo: MongoComponent, config: Configuration)(implicit
+  ec: ExecutionContext
+) extends PlayMongoRepository[PreferencesChanged](
       mongoComponent = mongo,
       collectionName = "preferencesChanged",
       domainFormat = PreferencesChanged.format,
@@ -56,8 +45,7 @@ class PreferencesChangedRepository @Inject()(
         ),
         IndexModel(
           Indexes.ascending("updatedAt"),
-          IndexOptions().expireAfter(config.get[Long]("preferencesChanged.ttl"),
-                                     TimeUnit.DAYS)
+          IndexOptions().expireAfter(config.get[Long]("preferencesChanged.ttl"), TimeUnit.DAYS)
         )
       ),
       replaceIndexes = true
@@ -67,8 +55,10 @@ class PreferencesChangedRepository @Inject()(
 
   /** Insert new update, unless already in existence for specified preferenceId
     *
-    * @param item describes the document to insert or update
-    * @return updated copy of the document
+    * @param item
+    *   describes the document to insert or update
+    * @return
+    *   updated copy of the document
     */
   def upsert(item: PreferencesChanged): Future[PreferencesChanged] =
     collection

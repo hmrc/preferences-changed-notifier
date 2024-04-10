@@ -20,8 +20,6 @@ sealed trait ErrorResponse {
   val message: String
 }
 
-final case class RequestError(override val message: String)
-    extends ErrorResponse
+final case class RequestError(override val message: String) extends ErrorResponse
 final case class ServerError(override val message: String) extends ErrorResponse
-final case class PersistenceError(override val message: String)
-    extends ErrorResponse
+final case class PersistenceError(override val message: String) extends ErrorResponse
