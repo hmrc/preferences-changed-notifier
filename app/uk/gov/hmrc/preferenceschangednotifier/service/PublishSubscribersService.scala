@@ -19,29 +19,25 @@ package uk.gov.hmrc.preferenceschangednotifier.service
 import org.apache.pekko.NotUsed
 import org.apache.pekko.stream.Materializer
 import org.apache.pekko.stream.scaladsl.Source
-import play.api.{Configuration, Logging}
+import play.api.{ Configuration, Logging }
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.mongo.workitem.WorkItem
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
-import uk.gov.hmrc.preferenceschangednotifier.model.{
-  NotifySubscriberRequest,
-  PreferencesChanged,
-  PreferencesChangedRef
-}
+import uk.gov.hmrc.preferenceschangednotifier.model.{ NotifySubscriberRequest, PreferencesChanged, PreferencesChangedRef }
 import uk.gov.hmrc.preferenceschangednotifier.scheduling.Result
 
 import java.util.concurrent.TimeUnit
-import javax.inject.{Inject, Singleton}
+import javax.inject.{ Inject, Singleton }
 import scala.concurrent.duration.Duration
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success, Try}
+import scala.concurrent.{ ExecutionContext, Future }
+import scala.util.{ Failure, Success, Try }
 
 @Singleton
-class PublishSubscribersService @Inject()(
-    service: PreferencesChangedService,
-    publisher: PublishSubscribersPublisher,
-    auditConnector: AuditConnector,
-    configuration: Configuration
+class PublishSubscribersService @Inject() (
+  service: PreferencesChangedService,
+  publisher: PublishSubscribersPublisher,
+  auditConnector: AuditConnector,
+  configuration: Configuration
 )(implicit ec: ExecutionContext, mat: Materializer)
     extends Logging {
 
@@ -53,29 +49,23 @@ class PublishSubscribersService @Inject()(
       TimeUnit.SECONDS
     )
 
-  /**
-    * Called by scheduler to find items for workload processing.
-    * Workloads will call any registered subscribers to notify
-    * them of a changed optin/optout value.
+  /** Called by scheduler to find items for workload processing. Workloads will call any registered subscribers to
+    * notify them of a changed optin/optout value.
     */
   def execute: Future[Result] =
     Source
-      .unfoldAsync[NotUsed, WorkItem[PreferencesChangedRef]](NotUsed)(
-        _ =>
-          service
-            .pull(retryFailedAfter)
-            .map(_.map(workItem => (NotUsed, workItem)))
+      .unfoldAsync[NotUsed, WorkItem[PreferencesChangedRef]](NotUsed)(_ =>
+        service
+          .pull(retryFailedAfter)
+          .map(_.map(workItem => (NotUsed, workItem)))
       )
       .runFoldAsync(Result(""))((acc, wi) => processWorkItem(acc, wi))
-      .recover {
-        case ex =>
-          logger.error(s"Recovery error $ex")
-          Result(ex.getMessage)
+      .recover { case ex =>
+        logger.error(s"Recovery error $ex")
+        Result(ex.getMessage)
       }
 
-  private def processWorkItem(
-      acc: Result,
-      workItem: WorkItem[PreferencesChangedRef]): Future[Result] = {
+  private def processWorkItem(acc: Result, workItem: WorkItem[PreferencesChangedRef]): Future[Result] = {
     logger.debug(s"processing workitem: $workItem")
 
     Try {
@@ -96,9 +86,7 @@ class PublishSubscribersService @Inject()(
     }
   }
 
-  private def execute(
-      pc: PreferencesChanged,
-      workItem: WorkItem[PreferencesChangedRef]): Future[Result] = {
+  private def execute(pc: PreferencesChanged, workItem: WorkItem[PreferencesChangedRef]): Future[Result] =
     publisher
       .execute(NotifySubscriberRequest(pc), workItem)
       .map {
@@ -108,32 +96,30 @@ class PublishSubscribersService @Inject()(
           audit(pc, msg)
           Result(msg)
       }
-  }
 
   private def audit(pc: PreferencesChanged, msg: String): Unit = {
     logger.error(s"Failed to notify subscriber: $msg")
     auditConnector.sendExplicitAudit(
       auditType = "notify-subscriber-error",
       detail = Map(
-        "nino" -> s"${pc.taxIds.getOrElse("nino", "Not found")}",
-        "saUtr" -> s"${pc.taxIds.getOrElse("sautr", "Not found")}",
+        "nino"         -> s"${pc.taxIds.getOrElse("nino", "Not found")}",
+        "saUtr"        -> s"${pc.taxIds.getOrElse("sautr", "Not found")}",
         "preferenceId" -> s"${pc.preferenceId}",
-        "error" -> msg
+        "error"        -> msg
       )
     )
   }
 
-  private def audit(workItem: WorkItem[PreferencesChangedRef],
-                    msg: String): Unit = {
+  private def audit(workItem: WorkItem[PreferencesChangedRef], msg: String): Unit = {
     logger.error(s"Failed to find preferencesChanged document: $msg")
     auditConnector.sendExplicitAudit(
       auditType = "notify-subscriber-error",
       detail = Map(
         "preferenceChangedId" -> s"${workItem.item.preferenceChangedId}",
-        "preferenceId" -> s"${workItem.item.preferenceId}",
-        "subscriber" -> s"${workItem.item.subscriber}",
-        "workitemStatus" -> s"${workItem.status}",
-        "error" -> msg
+        "preferenceId"        -> s"${workItem.item.preferenceId}",
+        "subscriber"          -> s"${workItem.item.subscriber}",
+        "workitemStatus"      -> s"${workItem.status}",
+        "error"               -> msg
       )
     )
   }

@@ -16,37 +16,24 @@
 
 package uk.gov.hmrc.preferenceschangednotifier.repository
 
-import org.mongodb.scala.model.{
-  Filters,
-  FindOneAndUpdateOptions,
-  IndexModel,
-  IndexOptions,
-  ReturnDocument,
-  Updates
-}
+import org.mongodb.scala.model.{ Filters, FindOneAndUpdateOptions, IndexModel, IndexOptions, ReturnDocument, Updates }
 import org.mongodb.scala.model.Indexes.ascending
 import play.api.Configuration
 import uk.gov.hmrc.mongo.MongoComponent
-import uk.gov.hmrc.mongo.workitem.{
-  ProcessingStatus,
-  WorkItem,
-  WorkItemFields,
-  WorkItemRepository
-}
+import uk.gov.hmrc.mongo.workitem.{ ProcessingStatus, WorkItem, WorkItemFields, WorkItemRepository }
 import uk.gov.hmrc.preferenceschangednotifier.model.PreferencesChangedRef
 
-import java.time.{Duration, Instant}
-import javax.inject.{Inject, Singleton}
-import scala.concurrent.{ExecutionContext, Future}
+import java.time.{ Duration, Instant }
+import javax.inject.{ Inject, Singleton }
+import scala.concurrent.{ ExecutionContext, Future }
 
-/**
-  * A work item represents an item in a queue which will represent a preferenceId and a subscriber.
-  * There will be duplicates, and that is ok, typically when one is already in progress or completed.
+/** A work item represents an item in a queue which will represent a preferenceId and a subscriber. There will be
+  * duplicates, and that is ok, typically when one is already in progress or completed.
   */
 @Singleton
-class PreferencesChangedWorkItemRepository @Inject()(
-    mongoComponent: MongoComponent,
-    configuration: Configuration
+class PreferencesChangedWorkItemRepository @Inject() (
+  mongoComponent: MongoComponent,
+  configuration: Configuration
 )(implicit ec: ExecutionContext)
     extends WorkItemRepository[PreferencesChangedRef](
       collectionName = "preferencesChangedWorkItem",
@@ -82,8 +69,7 @@ class PreferencesChangedWorkItemRepository @Inject()(
 
   override def now(): Instant = Instant.now()
 
-  def pushUpdated(preferencesChanged: PreferencesChangedRef)
-    : Future[WorkItem[PreferencesChangedRef]] = {
+  def pushUpdated(preferencesChanged: PreferencesChangedRef): Future[WorkItem[PreferencesChangedRef]] =
     collection
       .findOneAndUpdate(
         filter = workItemFilter(preferencesChanged),
@@ -97,17 +83,14 @@ class PreferencesChangedWorkItemRepository @Inject()(
         case Some(wi) => Future.successful(wi)
         case None     => pushNew(preferencesChanged)
       }
-  }
 
-  private def update() = {
+  private def update() =
     Updates.set("updatedAt", now())
-  }
 
-  private def workItemFilter(preferencesChangedRef: PreferencesChangedRef) = {
+  private def workItemFilter(preferencesChangedRef: PreferencesChangedRef) =
     Filters.and(
       Filters.eq("item.entityId", preferencesChangedRef.entityId),
       Filters.eq("item.subscriber", preferencesChangedRef.subscriber),
       Filters.eq("status", ProcessingStatus.ToDo.name)
     )
-  }
 }

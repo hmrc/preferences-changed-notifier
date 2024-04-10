@@ -16,43 +16,38 @@
 
 package uk.gov.hmrc.preferenceschangednotifier.controllers
 
-import play.api.libs.json.{JsValue, Reads}
+import play.api.libs.json.{ JsValue, Reads }
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
-import play.api.mvc.{Action, ControllerComponents}
+import play.api.mvc.{ Action, ControllerComponents }
 import uk.gov.hmrc.preferenceschangednotifier.controllers.model.PreferencesChangedRequest
 import uk.gov.hmrc.preferenceschangednotifier.service.PreferencesChangedService
-import uk.gov.hmrc.preferenceschangednotifier.model.{
-  PersistenceError,
-  RequestError,
-  ServerError
-}
+import uk.gov.hmrc.preferenceschangednotifier.model.{ PersistenceError, RequestError, ServerError }
 
-import javax.inject.{Inject, Singleton}
+import javax.inject.{ Inject, Singleton }
 import scala.concurrent.ExecutionContext
 
 @Singleton
-class PreferencesChangedController @Inject()(
-    cc: ControllerComponents,
-    svc: PreferencesChangedService
+class PreferencesChangedController @Inject() (
+  cc: ControllerComponents,
+  svc: PreferencesChangedService
 )(implicit val ec: ExecutionContext)
     extends BackendController(cc) {
 
   implicit val pcr: Reads[PreferencesChangedRequest] =
     PreferencesChangedRequest.reads
 
-  def preferencesChanged(): Action[JsValue] = Action.async(parse.json) {
-    implicit request =>
-      withJsonBody[PreferencesChangedRequest] { body =>
-        svc
-          .preferenceChanged(body)
-          .fold(
-            {
-              case RequestError(r)     => BadRequest(r)
-              case PersistenceError(p) => InternalServerError(p)
-              case ServerError(s)      => InternalServerError(s)
-            },
-            _ => Ok
-          )
-      }
+  def preferencesChanged(): Action[JsValue] = Action.async(parse.json) { implicit request =>
+    withJsonBody[PreferencesChangedRequest] { body =>
+      svc
+        .preferenceChanged(body)
+        .fold(
+          {
+            case RequestError(r)     => BadRequest(r)
+            case PersistenceError(p) => InternalServerError(p)
+            case ServerError(s)      => InternalServerError(s)
+          },
+          _ => Ok
+        )
+    }
   }
 }

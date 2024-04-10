@@ -19,13 +19,13 @@ package uk.gov.hmrc.preferenceschangednotifier.repository
 import org.mongodb.scala.bson.ObjectId
 import org.mongodb.scala.model
 import org.mongodb.scala.model.Filters
-import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
+import org.scalatest.concurrent.{ IntegrationPatience, ScalaFutures }
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.must.Matchers.{be, convertToAnyMustWrapper}
+import org.scalatest.matchers.must.Matchers.{ be, convertToAnyMustWrapper }
 import play.api.Configuration
 import play.api.test.Helpers
-import uk.gov.hmrc.mongo.test.{DefaultPlayMongoRepositorySupport, MongoSupport}
-import uk.gov.hmrc.mongo.workitem.{ProcessingStatus, WorkItem}
+import uk.gov.hmrc.mongo.test.{ DefaultPlayMongoRepositorySupport, MongoSupport }
+import uk.gov.hmrc.mongo.workitem.{ ProcessingStatus, WorkItem }
 import uk.gov.hmrc.preferenceschangednotifier.model.PreferencesChangedRef
 
 import java.time.Instant
@@ -33,18 +33,14 @@ import java.util.UUID
 import scala.concurrent.ExecutionContext
 
 class PreferencesChangedWorkItemRepositorySpec
-    extends AnyFreeSpec
-    with MongoSupport
-    with DefaultPlayMongoRepositorySupport[WorkItem[PreferencesChangedRef]]
-    with ScalaFutures
-    with IntegrationPatience {
+    extends AnyFreeSpec with MongoSupport with DefaultPlayMongoRepositorySupport[WorkItem[PreferencesChangedRef]]
+    with ScalaFutures with IntegrationPatience {
   spec =>
 
   implicit val executionContext: ExecutionContext =
     Helpers.stubControllerComponents().executionContext
 
-  val config: Configuration = Configuration(
-    data = ("preferencesChangedWorkItems.retryInProgressAfter", 60000))
+  val config: Configuration = Configuration(data = ("preferencesChangedWorkItems.retryInProgressAfter", 60000))
 
   override val repository =
     new PreferencesChangedWorkItemRepository(mongoComponent, config)
@@ -63,15 +59,13 @@ class PreferencesChangedWorkItemRepositorySpec
       val indexes: Seq[model.IndexModel] = repository.indexes
 
       val maybePreferenceIdIndexModel =
-        indexes.find(i =>
-          i.getKeys.toBsonDocument.get("item.preferenceId") != null)
+        indexes.find(i => i.getKeys.toBsonDocument.get("item.preferenceId") != null)
 
       maybePreferenceIdIndexModel.get.getOptions.isUnique must be(false)
       maybePreferenceIdIndexModel.get.getOptions.isBackground must be(true)
 
       val maybeSubscriberIndexModel =
-        indexes.find(i =>
-          i.getKeys.toBsonDocument.get("item.subscriber") != null)
+        indexes.find(i => i.getKeys.toBsonDocument.get("item.subscriber") != null)
 
       maybeSubscriberIndexModel.get.getOptions.isUnique must be(false)
       maybeSubscriberIndexModel.get.getOptions.isBackground must be(true)
@@ -79,10 +73,7 @@ class PreferencesChangedWorkItemRepositorySpec
     }
 
     "pushes new workitem correctly" in {
-      val a = PreferencesChangedRef(new ObjectId(),
-                                    new ObjectId(),
-                                    entityId,
-                                    "https://localhost:1234")
+      val a = PreferencesChangedRef(new ObjectId(), new ObjectId(), entityId, "https://localhost:1234")
       val result = repository.pushUpdated(a).futureValue
       result.id.toString.length mustEqual 24
     }
@@ -96,7 +87,7 @@ class PreferencesChangedWorkItemRepositorySpec
         repository.pullOutstanding(Instant.now(), Instant.now()).futureValue.get
 
       workItem.status mustEqual (ProcessingStatus.InProgress)
-      workItem.item.subscriber mustEqual (s)
+      workItem.item.subscriber mustEqual s
     }
 
     "complete workitem" in {
@@ -142,22 +133,16 @@ class PreferencesChangedWorkItemRepositorySpec
     "create new item if same preferenceId and subscriber item is already in progress" in {
       val prefId = new ObjectId()
       val a =
-        PreferencesChangedRef(new ObjectId(),
-                              prefId,
-                              entityId,
-                              "https://localhost:1234")
+        PreferencesChangedRef(new ObjectId(), prefId, entityId, "https://localhost:1234")
       val b =
-        PreferencesChangedRef(new ObjectId(),
-                              prefId,
-                              entityId,
-                              "https://localhost:1234")
+        PreferencesChangedRef(new ObjectId(), prefId, entityId, "https://localhost:1234")
 
       val wi1 = repository.pushUpdated(a).futureValue
       repository.markAs(wi1.id, ProcessingStatus.InProgress).futureValue
       val wi2 = repository.pushUpdated(b).futureValue // creates a new workitem
 
       wi1.receivedAt.isBefore(wi2.receivedAt) mustBe true
-      repository.collection.countDocuments().toFuture().futureValue mustBe (2)
+      repository.collection.countDocuments().toFuture().futureValue mustBe 2
     }
 
     "push duplicate items in todo state" in {
@@ -165,15 +150,9 @@ class PreferencesChangedWorkItemRepositorySpec
       val prefChangedId = new ObjectId()
 
       val a =
-        PreferencesChangedRef(prefChangedId,
-                              prefId,
-                              entityId,
-                              "https://localhost:1234")
+        PreferencesChangedRef(prefChangedId, prefId, entityId, "https://localhost:1234")
       val b =
-        PreferencesChangedRef(prefChangedId,
-                              prefId,
-                              entityId,
-                              "https://localhost:1234")
+        PreferencesChangedRef(prefChangedId, prefId, entityId, "https://localhost:1234")
 
       val wi1 = repository.pushUpdated(a).futureValue
       val wi2 = repository.pushUpdated(b).futureValue // updates existing workitem

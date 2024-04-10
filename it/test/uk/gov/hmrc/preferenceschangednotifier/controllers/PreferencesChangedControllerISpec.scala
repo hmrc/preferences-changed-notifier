@@ -18,44 +18,27 @@ package test.uk.gov.hmrc.preferenceschangednotifier.controllers
 
 import org.apache.pekko.actor.ActorSystem
 import org.mongodb.scala.model.Filters
-import org.scalatest.{BeforeAndAfterEach, Suite, TestSuite}
-import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
+import org.scalatest.{ BeforeAndAfterEach, Suite, TestSuite }
+import org.scalatest.concurrent.{ IntegrationPatience, ScalaFutures }
 import org.scalatestplus.play.PlaySpec
 import org.scalatestplus.play.guice.GuiceOneServerPerSuite
 import play.api.Application
 import play.api.http.ContentTypes
-import play.api.http.Status.{BAD_REQUEST, OK}
+import play.api.http.Status.{ BAD_REQUEST, OK }
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.Json
-import play.api.test.Helpers.{
-  CONTENT_TYPE,
-  contentAsString,
-  defaultAwaitTimeout,
-  status
-}
-import play.api.test.{FakeHeaders, FakeRequest, Injecting}
+import play.api.test.Helpers.{ CONTENT_TYPE, contentAsString, defaultAwaitTimeout, status }
+import play.api.test.{ FakeHeaders, FakeRequest, Injecting }
 import uk.gov.hmrc.mongo.test.MongoSupport
-import uk.gov.hmrc.preferenceschangednotifier.controllers.{
-  PreferencesChangedController,
-  routes
-}
-import uk.gov.hmrc.preferenceschangednotifier.repository.{
-  PreferencesChangedRepository,
-  PreferencesChangedWorkItemRepository
-}
+import uk.gov.hmrc.preferenceschangednotifier.controllers.{ PreferencesChangedController, routes }
+import uk.gov.hmrc.preferenceschangednotifier.repository.{ PreferencesChangedRepository, PreferencesChangedWorkItemRepository }
 
 import java.util.UUID
 import scala.concurrent.ExecutionContextExecutor
 
 class PreferencesChangedControllerISpec
-    extends PlaySpec
-    with TestSuite
-    with GuiceOneServerPerSuite
-    with ScalaFutures
-    with IntegrationPatience
-    with MongoSupport
-    with BeforeAndAfterEach
-    with Injecting { this: Suite =>
+    extends PlaySpec with TestSuite with GuiceOneServerPerSuite with ScalaFutures with IntegrationPatience
+    with MongoSupport with BeforeAndAfterEach with Injecting { this: Suite =>
 
   override implicit lazy val app: Application = new GuiceApplicationBuilder()
     .configure("metrics.enabled" -> false)
@@ -68,14 +51,13 @@ class PreferencesChangedControllerISpec
   val repo = inject[PreferencesChangedRepository]
   val wiRepo = inject[PreferencesChangedWorkItemRepository]
 
-  private def createFakePostRequest(reqBody: String) = {
+  private def createFakePostRequest(reqBody: String) =
     FakeRequest(
       "POST",
       routes.PreferencesChangedController.preferencesChanged().url,
       FakeHeaders(Seq(CONTENT_TYPE -> ContentTypes.JSON)),
       Json.parse(reqBody)
     )
-  }
 
   override def beforeEach(): Unit = {
     repo.collection.deleteMany(Filters.empty()).toFuture().futureValue
@@ -184,12 +166,12 @@ class PreferencesChangedControllerISpec
     "return 400 when the date is incorrectly formatted" in {
       val reqBody =
         s"""{
-          |"changedValue" : "paper",
-          |"preferenceId" : "65263df8d843592d74a2bfc6",
-          |"entityId"     : "$entityId",
-          |"updatedAt"    : "023-10-11T01:30:00.000Z",
-          |"taxIds"       : {"nino":"AB112233C"}
-          |}""".stripMargin
+           |"changedValue" : "paper",
+           |"preferenceId" : "65263df8d843592d74a2bfc6",
+           |"entityId"     : "$entityId",
+           |"updatedAt"    : "023-10-11T01:30:00.000Z",
+           |"taxIds"       : {"nino":"AB112233C"}
+           |}""".stripMargin
 
       val fakePostRequest = createFakePostRequest(reqBody)
       val result = controller.preferencesChanged()(fakePostRequest)
@@ -206,12 +188,12 @@ class PreferencesChangedControllerISpec
     "return 400 when the objectid is incorrectly formatted" in {
       val reqBody =
         s"""{
-          |  "changedValue" : "paper",
-          |  "preferenceId" : "5555",
-          |  "entityId"     : "$entityId",
-          |  "updatedAt"    : "2023-10-11T01:30:00.000Z",
-          |  "taxIds"       : {"nino":"AB112233C"}
-          |}""".stripMargin
+           |  "changedValue" : "paper",
+           |  "preferenceId" : "5555",
+           |  "entityId"     : "$entityId",
+           |  "updatedAt"    : "2023-10-11T01:30:00.000Z",
+           |  "taxIds"       : {"nino":"AB112233C"}
+           |}""".stripMargin
 
       val fakePostRequest = createFakePostRequest(reqBody)
       val result = controller.preferencesChanged()(fakePostRequest)

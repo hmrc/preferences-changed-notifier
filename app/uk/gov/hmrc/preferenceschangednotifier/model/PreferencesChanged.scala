@@ -17,31 +17,29 @@
 package uk.gov.hmrc.preferenceschangednotifier.model
 
 import org.mongodb.scala.bson.ObjectId
-import play.api.libs.json.{Format, Json, OFormat, OWrites, Reads}
+import play.api.libs.json.{ Format, Json, OFormat, OWrites, Reads }
 import uk.gov.hmrc.mongo.play.json.formats.MongoFormats
 import uk.gov.hmrc.mongo.play.json.formats.MongoJavatimeFormats
 import uk.gov.hmrc.preferenceschangednotifier.controllers.model.PreferencesChangedRequest
 
 import java.time.Instant
 
-/**
-  * PreferencesChanged encapsulates values we want to store in the
-  * mongo repository of the same name.
-  * Must ensure that instant formatting is consistent with mongo.
+/** PreferencesChanged encapsulates values we want to store in the mongo repository of the same name. Must ensure that
+  * instant formatting is consistent with mongo.
   */
 case class PreferencesChanged(
-    _id: ObjectId,
-    entityId: String,
-    changedValue: MessageDeliveryFormat,
-    preferenceId: ObjectId,
-    updatedAt: Instant,
-    taxIds: Map[String, String]
+  _id: ObjectId,
+  entityId: String,
+  changedValue: MessageDeliveryFormat,
+  preferenceId: ObjectId,
+  updatedAt: Instant,
+  taxIds: Map[String, String]
 )
 
 object PreferencesChanged {
 
   // Create a mongo type from the rest request
-  def from(pcRequest: PreferencesChangedRequest): PreferencesChanged = {
+  def from(pcRequest: PreferencesChangedRequest): PreferencesChanged =
     PreferencesChanged(
       _id = new ObjectId(),
       entityId = pcRequest.entityId,
@@ -50,7 +48,6 @@ object PreferencesChanged {
       updatedAt = pcRequest.updatedAt,
       taxIds = pcRequest.taxIds
     )
-  }
 
   implicit val objectIdFormat: Format[ObjectId] = MongoFormats.objectIdFormat
   implicit val dtf: Format[Instant] = MongoJavatimeFormats.instantFormat

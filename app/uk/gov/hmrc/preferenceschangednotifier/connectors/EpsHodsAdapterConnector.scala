@@ -24,10 +24,8 @@ import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
 import javax.inject.Singleton
 @Singleton
-class EpsHodsAdapterConnector @Inject()(http: HttpClient,
-                                        servicesConfig: ServicesConfig)
-    extends Subscriber
-    with Logging {
+class EpsHodsAdapterConnector @Inject() (http: HttpClient, servicesConfig: ServicesConfig)
+    extends Subscriber with Logging {
 
   override val name = "EpsHodsAdapter"
 

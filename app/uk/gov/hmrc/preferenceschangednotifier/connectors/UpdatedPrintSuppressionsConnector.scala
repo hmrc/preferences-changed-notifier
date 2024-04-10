@@ -19,14 +19,11 @@ package uk.gov.hmrc.preferenceschangednotifier.connectors
 import play.api.Logging
 import uk.gov.hmrc.http.HttpClient
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
-import javax.inject.{Inject, Singleton}
+import javax.inject.{ Inject, Singleton }
 
 @Singleton
-class UpdatedPrintSuppressionsConnector @Inject()(
-    http: HttpClient,
-    servicesConfig: ServicesConfig)
-    extends Subscriber
-    with Logging {
+class UpdatedPrintSuppressionsConnector @Inject() (http: HttpClient, servicesConfig: ServicesConfig)
+    extends Subscriber with Logging {
 
   override val name = "UpdatedPrintSuppressions"
 

@@ -16,15 +16,15 @@
 
 package uk.gov.hmrc.preferenceschangednotifier.model
 
-import play.api.libs.json.{Json, Writes}
+import play.api.libs.json.{ Json, Writes }
 import uk.gov.hmrc.preferenceschangednotifier.controllers.model.RestInstantFormat
 
 import java.time.Instant
 
 case class NotifySubscriberRequest(
-    changedValue: MessageDeliveryFormat,
-    updatedAt: Instant,
-    taxIds: Map[String, String]
+  changedValue: MessageDeliveryFormat,
+  updatedAt: Instant,
+  taxIds: Map[String, String]
 )
 
 object NotifySubscriberRequest {

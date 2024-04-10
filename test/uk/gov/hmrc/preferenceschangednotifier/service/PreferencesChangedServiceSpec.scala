@@ -17,43 +17,26 @@
 package uk.gov.hmrc.preferenceschangednotifier.service
 
 import org.mockito.ArgumentMatchers.any
-import org.mockito.MockitoSugar.{mock, reset, times, verify, when}
+import org.mockito.MockitoSugar.{ mock, reset, times, verify, when }
 import org.mongodb.scala.bson.ObjectId
-import org.scalatest.{BeforeAndAfterEach, EitherValues}
+import org.scalatest.{ BeforeAndAfterEach, EitherValues }
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.must.Matchers.{convertToAnyMustWrapper, equal}
+import org.scalatest.matchers.must.Matchers.{ convertToAnyMustWrapper, equal }
 import uk.gov.hmrc.mongo.workitem.ProcessingStatus.ToDo
 import uk.gov.hmrc.mongo.workitem.WorkItem
-import uk.gov.hmrc.preferenceschangednotifier.connectors.{
-  EpsHodsAdapterConnector,
-  UpdatedPrintSuppressionsConnector
-}
+import uk.gov.hmrc.preferenceschangednotifier.connectors.{ EpsHodsAdapterConnector, UpdatedPrintSuppressionsConnector }
 import uk.gov.hmrc.preferenceschangednotifier.controllers.model.PreferencesChangedRequest
-import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat.{
-  Digital,
-  Paper
-}
-import uk.gov.hmrc.preferenceschangednotifier.model.{
-  PersistenceError,
-  PreferencesChanged,
-  PreferencesChangedRef
-}
-import uk.gov.hmrc.preferenceschangednotifier.repository.{
-  PreferencesChangedRepository,
-  PreferencesChangedWorkItemRepository
-}
+import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat.{ Digital, Paper }
+import uk.gov.hmrc.preferenceschangednotifier.model.{ PersistenceError, PreferencesChanged, PreferencesChangedRef }
+import uk.gov.hmrc.preferenceschangednotifier.repository.{ PreferencesChangedRepository, PreferencesChangedWorkItemRepository }
 
 import java.time.Instant
 import java.util.UUID
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class PreferencesChangedServiceSpec
-    extends AnyFreeSpec
-    with ScalaFutures
-    with BeforeAndAfterEach
-    with EitherValues {
+class PreferencesChangedServiceSpec extends AnyFreeSpec with ScalaFutures with BeforeAndAfterEach with EitherValues {
   spec =>
 
   var repo = mock[PreferencesChangedRepository]
@@ -82,12 +65,15 @@ class PreferencesChangedServiceSpec
       when(repo.upsert(any[PreferencesChanged]))
         .thenReturn(
           Future.successful(
-            PreferencesChanged(_id = pcId,
-                               entityId,
-                               changedValue = Paper,
-                               preferenceId = pId,
-                               updatedAt = Instant.now(),
-                               Map.empty))
+            PreferencesChanged(
+              _id = pcId,
+              entityId,
+              changedValue = Paper,
+              preferenceId = pId,
+              updatedAt = Instant.now(),
+              Map.empty
+            )
+          )
         )
 
       val pcr = PreferencesChangedRequest(
@@ -130,20 +116,21 @@ class PreferencesChangedServiceSpec
         .thenReturn(Future.successful(pc2))
 
       val pcr1 =
-        PreferencesChangedRef(pc1._id,
-                              pc1.preferenceId,
-                              entityId,
-                              "EpsHodsAdapter")
+        PreferencesChangedRef(pc1._id, pc1.preferenceId, entityId, "EpsHodsAdapter")
       when(workItemRepo.pushUpdated(any[PreferencesChangedRef]))
         .thenReturn(
           Future.successful(
-            WorkItem(item = pcr1,
-                     id = new ObjectId(),
-                     receivedAt = Instant.now(),
-                     updatedAt = Instant.now(),
-                     availableAt = Instant.now(),
-                     status = ToDo,
-                     failureCount = 0)))
+            WorkItem(
+              item = pcr1,
+              id = new ObjectId(),
+              receivedAt = Instant.now(),
+              updatedAt = Instant.now(),
+              availableAt = Instant.now(),
+              status = ToDo,
+              failureCount = 0
+            )
+          )
+        )
 
       val pcr = PreferencesChangedRequest(
         changedValue = Digital,
@@ -189,20 +176,21 @@ class PreferencesChangedServiceSpec
       )
 
       val pcref =
-        PreferencesChangedRef(pc._id,
-                              pc.preferenceId,
-                              entityId,
-                              "EpsHodsAdapter")
+        PreferencesChangedRef(pc._id, pc.preferenceId, entityId, "EpsHodsAdapter")
       when(workItemRepo.pushUpdated(any[PreferencesChangedRef]))
         .thenReturn(
           Future.successful(
-            WorkItem(item = pcref,
-                     id = new ObjectId(),
-                     receivedAt = Instant.now(),
-                     updatedAt = Instant.now(),
-                     availableAt = Instant.now(),
-                     status = ToDo,
-                     failureCount = 0)))
+            WorkItem(
+              item = pcref,
+              id = new ObjectId(),
+              receivedAt = Instant.now(),
+              updatedAt = Instant.now(),
+              availableAt = Instant.now(),
+              status = ToDo,
+              failureCount = 0
+            )
+          )
+        )
 
       val result =
         svc.preferenceChanged(pcr).value.futureValue
@@ -227,8 +215,7 @@ class PreferencesChangedServiceSpec
       val result =
         svc.preferenceChanged(pcr).value.futureValue
 
-      result must equal(
-        Left(PersistenceError("java.lang.RuntimeException: oops")))
+      result must equal(Left(PersistenceError("java.lang.RuntimeException: oops")))
 
       verify(repo, times(1)).upsert(any[PreferencesChanged])
     }
@@ -247,8 +234,7 @@ class PreferencesChangedServiceSpec
       val result =
         svc.preferenceChanged(pcr).value.futureValue
 
-      result must equal(
-        Left(PersistenceError("java.lang.RuntimeException: whoa!")))
+      result must equal(Left(PersistenceError("java.lang.RuntimeException: whoa!")))
 
       verify(repo, times(1)).upsert(any[PreferencesChanged])
     }
@@ -257,17 +243,12 @@ class PreferencesChangedServiceSpec
       when(repo.upsert(any[PreferencesChanged]))
         .thenThrow(new RuntimeException("whoa, throwing!"))
 
-      val pcr = PreferencesChangedRequest(Paper,
-                                          new ObjectId().toString,
-                                          entityId,
-                                          Instant.now,
-                                          Map.empty)
+      val pcr = PreferencesChangedRequest(Paper, new ObjectId().toString, entityId, Instant.now, Map.empty)
 
       val result =
         svc.preferenceChanged(pcr).value.futureValue
 
-      result must equal(
-        Left(PersistenceError("java.lang.RuntimeException: whoa, throwing!")))
+      result must equal(Left(PersistenceError("java.lang.RuntimeException: whoa, throwing!")))
 
       verify(repo, times(1)).upsert(any[PreferencesChanged])
     }

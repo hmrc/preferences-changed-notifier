@@ -17,23 +17,22 @@
 package uk.gov.hmrc.preferenceschangednotifier.scheduling
 
 import play.api.inject._
-import play.api.{Configuration, Environment}
+import play.api.{ Configuration, Environment }
 import uk.gov.hmrc.preferenceschangednotifier.scheduled.PublishSubscribersJob
 
-import javax.inject.{Inject, Provider}
+import javax.inject.{ Inject, Provider }
 
 // $COVERAGE-OFF$Disabling test coverage
 class ScheduledJobModule extends play.api.inject.Module {
-  override def bindings(environment: Environment,
-                        configuration: Configuration): Seq[Binding[_]] =
+  override def bindings(environment: Environment, configuration: Configuration): Seq[Binding[_]] =
     Seq(
       bind[ScheduledJobs].toProvider[ScheduledJobProvider],
       bind[Scheduler].toSelf.eagerly()
     )
 }
 
-class ScheduledJobProvider @Inject()(
-    publishSubcribersJob: PublishSubscribersJob
+class ScheduledJobProvider @Inject() (
+  publishSubcribersJob: PublishSubscribersJob
 ) extends Provider[ScheduledJobs] {
   override def get(): ScheduledJobs =
     ScheduledJobs(Set(publishSubcribersJob))
