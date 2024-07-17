@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
-package test.uk.gov.hmrc.preferenceschangednotifier.controllers
+package uk.gov.hmrc.preferenceschangednotifier.controllers
 
 import org.apache.pekko.actor.ActorSystem
 import org.mongodb.scala.model.Filters
+import org.mongodb.scala.SingleObservableFuture
 import org.scalatest.{ BeforeAndAfterEach, Suite, TestSuite }
 import org.scalatest.concurrent.{ IntegrationPatience, ScalaFutures }
 import org.scalatestplus.play.PlaySpec
@@ -180,7 +181,7 @@ class PreferencesChangedControllerISpec
 
       val errStr = "Invalid PreferencesChangedRequest payload: List" +
         "((/updatedAt,List(JsonValidationError(List(Could not parse " +
-        "023-10-11T01:30:00.000Z as an ISO Instant),List()))))"
+        "023-10-11T01:30:00.000Z as an ISO Instant),ArraySeq()))))"
 
       contentAsString(result) must be(errStr)
     }

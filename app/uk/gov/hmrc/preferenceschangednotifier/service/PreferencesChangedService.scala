@@ -19,6 +19,8 @@ package uk.gov.hmrc.preferenceschangednotifier.service
 import cats.data.EitherT
 import org.bson.types.ObjectId
 import org.mongodb.scala.model.Filters
+import org.mongodb.scala.SingleObservableFuture
+import org.mongodb.scala.ToSingleObservablePublisher
 import play.api.Logging
 import uk.gov.hmrc.mongo.workitem.{ ResultStatus, WorkItem }
 import uk.gov.hmrc.preferenceschangednotifier.connectors.Subscriber

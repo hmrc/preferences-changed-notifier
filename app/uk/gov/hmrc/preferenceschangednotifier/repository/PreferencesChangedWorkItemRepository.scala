@@ -18,6 +18,7 @@ package uk.gov.hmrc.preferenceschangednotifier.repository
 
 import org.mongodb.scala.model.{ Filters, FindOneAndUpdateOptions, IndexModel, IndexOptions, ReturnDocument, Updates }
 import org.mongodb.scala.model.Indexes.ascending
+import org.mongodb.scala.SingleObservableFuture
 import play.api.Configuration
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.workitem.{ ProcessingStatus, WorkItem, WorkItemFields, WorkItemRepository }

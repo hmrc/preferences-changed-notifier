@@ -17,24 +17,27 @@
 package uk.gov.hmrc.preferenceschangednotifier.connectors
 
 import play.api.Logging
-import uk.gov.hmrc.http.HttpClient
+import uk.gov.hmrc.http.StringContextOps
+import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
+
+import java.net.URL
 import javax.inject.{ Inject, Singleton }
 
 @Singleton
-class UpdatedPrintSuppressionsConnector @Inject() (http: HttpClient, servicesConfig: ServicesConfig)
+class UpdatedPrintSuppressionsConnector @Inject() (http: HttpClientV2, servicesConfig: ServicesConfig)
     extends Subscriber with Logging {
 
   override val name = "UpdatedPrintSuppressions"
 
-  override val httpClient: HttpClient = http
+  override val httpClient: HttpClientV2 = http
 
   val UpsTaxId = "sautr"
 
   lazy val baseUrl: String =
     servicesConfig.baseUrl("updated-print-suppressions")
 
-  override def url: String = s"$baseUrl/preferences/notify-subscriber"
+  override def url: URL = url"$baseUrl/preferences/notify-subscriber"
 
   override def taxIdsValid(taxIds: Map[String, String]): Boolean =
     taxIds.getOrElse(UpsTaxId, "") != ""

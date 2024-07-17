@@ -19,12 +19,15 @@ package uk.gov.hmrc.preferenceschangednotifier.repository
 import org.mongodb.scala.bson.ObjectId
 import org.mongodb.scala.model
 import org.mongodb.scala.model.Filters
+import org.mongodb.scala.SingleObservableFuture
+import org.mongodb.scala.ToSingleObservablePublisher
 import org.scalatest.Suite
 import org.scalatest.concurrent.{ IntegrationPatience, ScalaFutures }
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.must.Matchers.{ be, convertToAnyMustWrapper }
+import org.scalatest.matchers.must.Matchers.{ be, must, mustEqual, mustNot }
 import play.api.Configuration
 import play.api.test.Helpers
+import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
 import uk.gov.hmrc.mongo.test.{ DefaultPlayMongoRepositorySupport, MongoSupport }
 import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat.{ Digital, Paper }
 import uk.gov.hmrc.preferenceschangednotifier.model.PreferencesChanged
@@ -43,12 +46,14 @@ class PreferencesChangedRepositorySpec
 
   val config: Configuration = Configuration(data = ("preferencesChanged.ttl", 14))
 
-  val repository = new PreferencesChangedRepository(mongoComponent, config)
+  val preferencesChangedRepository = new PreferencesChangedRepository(mongoComponent, config)
+
+  override val repository: PlayMongoRepository[PreferencesChanged] = preferencesChangedRepository
 
   override protected def checkTtlIndex: Boolean = true
 
   override protected def beforeEach(): Unit = {
-    repository.collection.deleteMany(Filters.empty()).toFuture().futureValue
+    preferencesChangedRepository.collection.deleteMany(Filters.empty()).toFuture().futureValue
     dropCollection()
     dropDatabase()
     super.beforeEach()
@@ -57,7 +62,7 @@ class PreferencesChangedRepositorySpec
   "Preferences changed repository" - {
 
     "test indexes" in {
-      val indexes: Seq[model.IndexModel] = repository.indexes
+      val indexes: Seq[model.IndexModel] = preferencesChangedRepository.indexes
 
       val maybeEntityIdIndexModel =
         indexes.find(i => i.getKeys.toBsonDocument.get("entityId") != null)
@@ -81,7 +86,7 @@ class PreferencesChangedRepositorySpec
         Instant.now(),
         Map("nino" -> "AB112233D")
       )
-      val result = repository.upsert(a).futureValue
+      val result = preferencesChangedRepository.upsert(a).futureValue
       result._id mustNot be(null)
     }
 
@@ -92,7 +97,7 @@ class PreferencesChangedRepositorySpec
 
       val a =
         PreferencesChanged(_id = objectId, entityId, Paper, preferenceId, Instant.now(), Map("nino" -> "AB112233D"))
-      val r1 = repository.collection.insertOne(a).toFuture().futureValue
+      val r1 = preferencesChangedRepository.collection.insertOne(a).toFuture().futureValue
       r1.wasAcknowledged() mustEqual true
 
       val b = PreferencesChanged(
@@ -103,10 +108,10 @@ class PreferencesChangedRepositorySpec
         Instant.now(),
         Map("nino" -> "AB112233D")
       )
-      val r2 = repository.upsert(item = b).futureValue
+      val r2 = preferencesChangedRepository.upsert(item = b).futureValue
       r2._id must be(objectId)
 
-      val item = repository.collection
+      val item = preferencesChangedRepository.collection
         .find(
           filter = Filters.eq("entityId", entityId)
         )
@@ -130,7 +135,7 @@ class PreferencesChangedRepositorySpec
         PreferencesChanged(_id = objectId1, entityId1, Paper, preferenceId1, Instant.now(), Map("nino" -> "AB112233D"))
 
       // Insert object A
-      val r1 = repository.collection.insertOne(a).toFuture().futureValue
+      val r1 = preferencesChangedRepository.collection.insertOne(a).toFuture().futureValue
       r1.wasAcknowledged() mustEqual true
 
       val b = PreferencesChanged(
@@ -142,10 +147,10 @@ class PreferencesChangedRepositorySpec
         Map("nino" -> "AB112233A")
       )
 
-      val r2 = repository.upsert(item = b).futureValue
+      val r2 = preferencesChangedRepository.upsert(item = b).futureValue
       r2._id must be(objectId2)
 
-      val item = repository.collection
+      val item = preferencesChangedRepository.collection
         .find(
           filter = Filters.eq("entityId", entityId1)
         )

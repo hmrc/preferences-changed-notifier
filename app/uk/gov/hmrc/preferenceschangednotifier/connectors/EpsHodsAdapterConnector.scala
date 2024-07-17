@@ -18,25 +18,27 @@ package uk.gov.hmrc.preferenceschangednotifier.connectors
 
 import com.google.inject.Inject
 import play.api.Logging
-
-import uk.gov.hmrc.http.HttpClient
+import uk.gov.hmrc.http.StringContextOps
+import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 
+import java.net.URL
 import javax.inject.Singleton
+
 @Singleton
-class EpsHodsAdapterConnector @Inject() (http: HttpClient, servicesConfig: ServicesConfig)
+class EpsHodsAdapterConnector @Inject() (http: HttpClientV2, servicesConfig: ServicesConfig)
     extends Subscriber with Logging {
 
   override val name = "EpsHodsAdapter"
 
-  override val httpClient: HttpClient = http
+  override val httpClient: HttpClientV2 = http
 
   val NpsTaxId = "nino"
 
   lazy val baseUrl: String = servicesConfig.baseUrl("eps-hods-adapter")
 
-  override def url: String =
-    s"$baseUrl/eps-hods-adapter/preferences/notify-subscriber"
+  override def url: URL =
+    url"$baseUrl/eps-hods-adapter/preferences/notify-subscriber"
 
   override def taxIdsValid(taxIds: Map[String, String]): Boolean =
     taxIds.getOrElse(NpsTaxId, "") != ""

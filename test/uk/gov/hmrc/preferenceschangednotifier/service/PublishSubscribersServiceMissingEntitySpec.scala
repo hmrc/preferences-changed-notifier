@@ -22,6 +22,7 @@ import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.BsonDateTime
 import org.mongodb.scala.model.InsertOneOptions
 import org.mongodb.scala.result.InsertOneResult
+import org.mongodb.scala.SingleObservableFuture
 import org.scalatest.{ BeforeAndAfterEach, EitherValues }
 import org.scalatest.concurrent.{ IntegrationPatience, ScalaFutures }
 import org.scalatestplus.play.PlaySpec

@@ -19,23 +19,26 @@ package uk.gov.hmrc.preferenceschangednotifier.controllers
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.Materializer
 import cats.data.EitherT
+import cats.data.EitherT.rightT
+import cats.implicits.*
 import org.mockito.ArgumentMatchers.any
-import org.mockito.MockitoSugar.{ mock, when }
+import org.mockito.Mockito.when
 import org.mongodb.scala.bson.ObjectId
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.must.Matchers.convertToAnyMustWrapper
+import org.scalatest.matchers.must.Matchers.must
 import org.scalatest.matchers.should.Matchers
+import org.scalatestplus.mockito.MockitoSugar.mock
 import play.api.http.{ ContentTypes, Status }
 import play.api.libs.json.Json
-import play.api.test.Helpers._
+import play.api.test.Helpers.*
 import play.api.test.{ FakeHeaders, FakeRequest, Helpers }
 import uk.gov.hmrc.preferenceschangednotifier.controllers.model.PreferencesChangedRequest
 import uk.gov.hmrc.preferenceschangednotifier.service.PreferencesChangedService
-import uk.gov.hmrc.preferenceschangednotifier.model.ServerError
+import uk.gov.hmrc.preferenceschangednotifier.model.{ ErrorResponse, ServerError }
 
 import java.time.Instant
 import java.util.UUID
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ ExecutionContext, Future }
 import scala.concurrent.ExecutionContext.global
 
 class PreferencesChangedControllerSpec extends AnyFreeSpec with Matchers {
@@ -71,7 +74,9 @@ class PreferencesChangedControllerSpec extends AnyFreeSpec with Matchers {
         createFakePostRequest(reqBody)
 
       when(service.preferenceChanged(any[PreferencesChangedRequest]))
-        .thenReturn(EitherT.rightT(()))
+        .thenReturn {
+          EitherT.rightT[Future, Unit](())
+        }
 
       val result = controller.preferencesChanged()(fakePostRequest)
       status(result) shouldBe Status.OK
@@ -91,7 +96,7 @@ class PreferencesChangedControllerSpec extends AnyFreeSpec with Matchers {
         createFakePostRequest(reqBody)
 
       when(service.preferenceChanged(any[PreferencesChangedRequest]))
-        .thenReturn(EitherT.leftT(ServerError("whatever")))
+        .thenReturn(EitherT.leftT[Future, ErrorResponse](ServerError("whatever")))
 
       val result = controller.preferencesChanged()(fakePostRequest)
 
@@ -115,7 +120,7 @@ class PreferencesChangedControllerSpec extends AnyFreeSpec with Matchers {
         createFakePostRequest(reqBody)
 
       when(service.preferenceChanged(any[PreferencesChangedRequest]))
-        .thenReturn(EitherT.leftT(ServerError("whatever")))
+        .thenReturn(EitherT.leftT[Future, String](ServerError("whatever")))
 
       val result = controller.preferencesChanged()(fakePostRequest)
       contentAsString(result) must equal("whatever")
@@ -136,7 +141,7 @@ class PreferencesChangedControllerSpec extends AnyFreeSpec with Matchers {
         createFakePostRequest(reqBody)
 
       when(service.preferenceChanged(any[PreferencesChangedRequest]))
-        .thenReturn(EitherT.rightT(()))
+        .thenReturn(EitherT.rightT[Future, Unit](()))
 
       val result = controller.preferencesChanged()(fakePostRequest)
       status(result) shouldBe Status.OK
@@ -156,7 +161,7 @@ class PreferencesChangedControllerSpec extends AnyFreeSpec with Matchers {
         createFakePostRequest(reqBody)
 
       when(service.preferenceChanged(any[PreferencesChangedRequest]))
-        .thenReturn(EitherT.rightT(()))
+        .thenReturn(EitherT.rightT[Future, Unit](()))
 
       val result = controller.preferencesChanged()(fakePostRequest)
       status(result) shouldBe Status.OK

@@ -18,7 +18,7 @@ package uk.gov.hmrc.preferenceschangednotifier.model
 
 import org.scalatest.freespec.AnyFreeSpec
 import org.mongodb.scala.bson.ObjectId
-import org.scalatest.matchers.must.Matchers.{ convertToAnyMustWrapper, equal, have, the }
+import org.scalatest.matchers.must.Matchers.{ equal, have, must, mustEqual, the }
 import play.api.libs.json.JsObject
 import uk.gov.hmrc.preferenceschangednotifier.controllers.model.PreferencesChangedRequest
 import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat.Paper

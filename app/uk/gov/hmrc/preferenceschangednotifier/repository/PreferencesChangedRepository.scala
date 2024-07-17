@@ -17,6 +17,7 @@
 package uk.gov.hmrc.preferenceschangednotifier.repository
 
 import org.mongodb.scala.model.ReturnDocument.AFTER
+import org.mongodb.scala.SingleObservableFuture
 import org.mongodb.scala.model.{ Filters, FindOneAndUpdateOptions, IndexModel, IndexOptions, Indexes, Updates }
 import play.api.{ Configuration, Logger }
 import uk.gov.hmrc.mongo.MongoComponent
