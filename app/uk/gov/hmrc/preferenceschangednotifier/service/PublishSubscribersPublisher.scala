@@ -81,11 +81,11 @@ class PublishSubscribersPublisher @Inject() (
             .completeWithStatus(workItem, Failed)
             .map(_ => Left(s"with http response: $status, $message"))
 
-        case e =>
-          logger.error(s"publish to subscriber ${subscriber.toString} returned unexpected result: $e")
+        case null =>
+          logger.error(s"publish to subscriber ${subscriber.toString} returned unexpected result: null")
           service
             .completeWithStatus(workItem, Failed)
-            .map(_ => Left(s"Unexpected result: ${e.toString}"))
+            .map(_ => Left(s"Unexpected result: null"))
       }
       .recoverWith { case ex =>
         recoverNotify(workItem, ex)
@@ -130,7 +130,7 @@ class PublishSubscribersPublisher @Inject() (
       logger.error(msg)
       service
         .completeWithStatus(workItem, PermanentlyFailed)
-        .map { a: Boolean =>
+        .map { (a: Boolean) =>
           Left(s"$msg. Workitem updated $a")
         }
       // TODO: AUDIT LOG
@@ -141,7 +141,7 @@ class PublishSubscribersPublisher @Inject() (
 
       service
         .completeWithStatus(workItem, Failed)
-        .map { a: Boolean =>
+        .map { (a: Boolean) =>
           Left(s"$msg. Workitem updated $a")
         }
 
@@ -158,7 +158,7 @@ class PublishSubscribersPublisher @Inject() (
 
     service
       .completeWithStatus(workItem, PermanentlyFailed)
-      .map { a: Boolean =>
+      .map { (a: Boolean) =>
         Left(s"$msg. Workitem updated $a")
       }
     // TODO: AUDIT LOG

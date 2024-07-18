@@ -17,12 +17,13 @@
 package uk.gov.hmrc.preferenceschangednotifier.service
 
 import org.mockito.ArgumentMatchers.any
-import org.mockito.MockitoSugar.{ mock, reset, times, verify, when }
+import org.mockito.Mockito.{ reset, times, verify, when }
 import org.mongodb.scala.bson.ObjectId
 import org.scalatest.{ BeforeAndAfterEach, EitherValues }
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.must.Matchers.{ convertToAnyMustWrapper, equal }
+import org.scalatest.matchers.must.Matchers.{ equal, must }
+import org.scalatestplus.mockito.MockitoSugar.mock
 import uk.gov.hmrc.mongo.workitem.ProcessingStatus.ToDo
 import uk.gov.hmrc.mongo.workitem.WorkItem
 import uk.gov.hmrc.preferenceschangednotifier.connectors.{ EpsHodsAdapterConnector, UpdatedPrintSuppressionsConnector }

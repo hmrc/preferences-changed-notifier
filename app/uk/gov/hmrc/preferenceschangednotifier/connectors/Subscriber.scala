@@ -16,19 +16,23 @@
 
 package uk.gov.hmrc.preferenceschangednotifier.connectors
 
-import uk.gov.hmrc.http.{ HeaderCarrier, HttpClient, HttpResponse, UpstreamErrorResponse }
+import play.api.libs.json.Json
+import play.api.libs.ws.writeableOf_JsValue
+import uk.gov.hmrc.http.{ HeaderCarrier, HttpResponse, UpstreamErrorResponse }
 import uk.gov.hmrc.preferenceschangednotifier.model.NotifySubscriberRequest
 import uk.gov.hmrc.http.HttpReads.Implicits._
-import scala.concurrent.ExecutionContext
+import uk.gov.hmrc.http.client.HttpClientV2
 
+import java.net.URL
+import scala.concurrent.ExecutionContext
 import java.util.UUID
 import scala.concurrent.Future
 
 trait Subscriber {
   val name: String
 
-  protected val httpClient: HttpClient
-  protected def url: String
+  protected val httpClient: HttpClientV2
+  protected def url: URL
 
   def taxIdsValid(value: Map[String, String]): Boolean
 
@@ -36,9 +40,8 @@ trait Subscriber {
     request: NotifySubscriberRequest
   )(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[Either[UpstreamErrorResponse, HttpResponse]] =
     httpClient
-      .POST[NotifySubscriberRequest, Either[UpstreamErrorResponse, HttpResponse]](
-        url,
-        request,
-        Seq("CorrelationId" -> UUID.randomUUID().toString)
-      )
+      .post(url)
+      .withBody(Json.toJson(request))
+      .setHeader("CorrelationId" -> UUID.randomUUID().toString)
+      .execute[Either[UpstreamErrorResponse, HttpResponse]]
 }

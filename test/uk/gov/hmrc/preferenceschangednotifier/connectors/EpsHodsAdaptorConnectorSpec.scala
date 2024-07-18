@@ -17,16 +17,17 @@
 package uk.gov.hmrc.preferenceschangednotifier.connectors
 
 import com.github.tomakehurst.wiremock.client.WireMock.{ aResponse, givenThat, post, urlEqualTo }
-import org.mockito.MockitoSugar
 import org.scalatest.{ BeforeAndAfterEach, EitherValues }
 import org.scalatest.concurrent.{ IntegrationPatience, ScalaFutures }
+import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.play.PlaySpec
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import play.api.Application
 import play.api.http.Status
 import play.api.http.Status.{ BAD_REQUEST, NOT_FOUND, OK }
 import play.api.inject.guice.GuiceApplicationBuilder
-import uk.gov.hmrc.http.{ HeaderCarrier, HttpClient }
+import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 import uk.gov.hmrc.preferenceschangednotifier.WireMockUtil
 import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat.Paper
@@ -48,7 +49,7 @@ class EpsHodsAdaptorConnectorSpec
       )
       .build()
 
-  val httpClient: HttpClient = app.injector.instanceOf[HttpClient]
+  val httpClient: HttpClientV2 = app.injector.instanceOf[HttpClientV2]
   private val servicesConfig = app.injector.instanceOf[ServicesConfig]
 
   implicit val ec: ExecutionContext = app.injector.instanceOf[ExecutionContext]

@@ -18,6 +18,7 @@ package uk.gov.hmrc.preferenceschangednotifier.service
 
 import com.github.tomakehurst.wiremock.client.WireMock.{ aResponse, givenThat, post, urlEqualTo }
 import org.mongodb.scala.bson.ObjectId
+import org.mongodb.scala.SingleObservableFuture
 import org.scalatest.{ BeforeAndAfterEach, EitherValues }
 import org.scalatest.concurrent.{ IntegrationPatience, ScalaFutures }
 import org.scalatestplus.play.PlaySpec
