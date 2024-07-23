@@ -18,20 +18,23 @@ package uk.gov.hmrc.preferenceschangednotifier
 
 import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock
+import com.github.tomakehurst.wiremock.common.Slf4jNotifier
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig
 import org.scalatest.{ BeforeAndAfterAll, BeforeAndAfterEach, Suite }
 
 trait WireMockUtil extends BeforeAndAfterAll with BeforeAndAfterEach {
   suite: Suite =>
 
-  def dependenciesPort = 22222
-
-  lazy val wireMockServer = new WireMockServer(wireMockConfig().port(dependenciesPort))
+  val wireMockServer = new WireMockServer(
+    wireMockConfig()
+      .dynamicHttpsPort()
+      .dynamicPort()
+      .notifier(new Slf4jNotifier(true))
+  )
 
   override def beforeAll(): Unit = {
     super.beforeAll()
     wireMockServer.start()
-    WireMock.configureFor(dependenciesPort)
   }
 
   override def beforeEach(): Unit = {
@@ -43,5 +46,4 @@ trait WireMockUtil extends BeforeAndAfterAll with BeforeAndAfterEach {
     super.afterAll()
     wireMockServer.stop()
   }
-
 }

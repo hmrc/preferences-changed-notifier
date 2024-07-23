@@ -17,29 +17,29 @@
 package uk.gov.hmrc.preferenceschangednotifier.service
 
 import com.github.tomakehurst.wiremock.client.WireMock.{ aResponse, givenThat, post, urlEqualTo }
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.stream.Materializer
 import org.bson.types.ObjectId
-import org.mongodb.scala.bson.collection.immutable.Document
+import org.mongodb.scala.SingleObservableFuture
 import org.mongodb.scala.bson.BsonDateTime
+import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.InsertOneOptions
 import org.mongodb.scala.result.InsertOneResult
-import org.mongodb.scala.SingleObservableFuture
-import org.scalatest.{ BeforeAndAfterEach, EitherValues }
 import org.scalatest.concurrent.{ IntegrationPatience, ScalaFutures }
+import org.scalatest.EitherValues
 import org.scalatestplus.play.PlaySpec
-import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import play.api.Application
-import play.api.Play.materializer
 import play.api.http.Status.OK
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.Format
+import uk.gov.hmrc.mongo.play.json.formats.MongoJavatimeFormats
 import uk.gov.hmrc.mongo.test.MongoSupport
+import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.preferenceschangednotifier.WireMockUtil
+import uk.gov.hmrc.preferenceschangednotifier.connectors.{ EpsHodsAdapterConnector, Subscriber, UpdatedPrintSuppressionsConnector }
 import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat.Paper
 import uk.gov.hmrc.preferenceschangednotifier.model.{ PreferencesChanged, PreferencesChangedRef }
 import uk.gov.hmrc.preferenceschangednotifier.repository.{ PreferencesChangedRepository, PreferencesChangedWorkItemRepository }
-import uk.gov.hmrc.mongo.play.json.formats.MongoJavatimeFormats
-import uk.gov.hmrc.play.audit.http.connector.AuditConnector
-import uk.gov.hmrc.preferenceschangednotifier.connectors.{ EpsHodsAdapterConnector, Subscriber, UpdatedPrintSuppressionsConnector }
 import uk.gov.hmrc.preferenceschangednotifier.scheduling.Result
 
 import java.time.Instant
@@ -47,55 +47,16 @@ import java.util.UUID
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class PublishSubscribersServiceMissingEntitySpec
-    extends PlaySpec with ScalaFutures with GuiceOneAppPerSuite with IntegrationPatience with BeforeAndAfterEach
-    with EitherValues with WireMockUtil with MongoSupport {
-
-  override def fakeApplication(): Application =
-    GuiceApplicationBuilder()
-      .configure(
-        "metrics.enabled"                             -> false,
-        "microservice.services.eps-hods-adapter.host" -> "localhost",
-        "microservice.services.eps-hods-adapter.port" -> "22222",
-        "featureFlag.useUPS"                          -> true
-      )
-      .build()
-
-  private val publisher = app.injector.instanceOf[PublishSubscribersPublisher]
-  private val auditConnector = app.injector.instanceOf[AuditConnector]
-
-  private val pcRepo = new PreferencesChangedRepository(mongoComponent, fakeApplication().configuration)
-
-  private val pcwiRepo = new PreferencesChangedWorkItemRepository(mongoComponent, fakeApplication().configuration)
-
-  val epsSubscriber: Subscriber =
-    app.injector.instanceOf[EpsHodsAdapterConnector]
-  val upsSubscriber: Subscriber =
-    app.injector.instanceOf[UpdatedPrintSuppressionsConnector]
-
-  val service = new PublishSubscribersService(
-    new PreferencesChangedService(
-      pcRepo,
-      pcwiRepo,
-      Seq(epsSubscriber, upsSubscriber)
-    ),
-    publisher,
-    auditConnector,
-    fakeApplication().configuration
-  )
-
-  override def beforeEach(): Unit = {
-    pcRepo.collection.drop().toFuture().futureValue
-    pcwiRepo.collection.drop().toFuture().futureValue
-    super.beforeEach()
-  }
+class PublishSubscribersServiceMissingEntityISpec
+    extends PlaySpec with ScalaFutures with IntegrationPatience with EitherValues with WireMockUtil with MongoSupport {
 
   "Service..." must {
 
-    "skip invalid item" in new TestCase {
-      givenThat(
+    "skip invalid item" in new TestSetup {
+      wireMockServer.addStubMapping(
         post(urlEqualTo("/eps-hods-adapter/preferences/notify-subscriber"))
           .willReturn(aResponse().withStatus(OK))
+          .build()
       )
 
       val docCount = pcwiRepo.collection.countDocuments().toFuture().futureValue
@@ -106,10 +67,11 @@ class PublishSubscribersServiceMissingEntitySpec
       result.message must be("")
     }
 
-    "process the second item correctly" in new TestCase {
-      givenThat(
+    "process the second item correctly" in new TestSetup {
+      wireMockServer.addStubMapping(
         post(urlEqualTo("/eps-hods-adapter/preferences/notify-subscriber"))
           .willReturn(aResponse().withStatus(OK))
+          .build()
       )
 
       // create and insert a PreferencesChanged document
@@ -139,7 +101,49 @@ class PublishSubscribersServiceMissingEntitySpec
       subscriber = "EpsHodsAdapter"
     )
 
-  class TestCase {
+  trait TestSetup {
+
+    val app: Application =
+      GuiceApplicationBuilder()
+        .configure(
+          "metrics.enabled"                                       -> false,
+          "preferencesChanged.retryFailedAfter"                   -> 10,
+          "microservice.services.eps-hods-adapter.host"           -> "localhost",
+          "microservice.services.eps-hods-adapter.port"           -> wireMockServer.port(),
+          "scheduling.PublishSubscribersJob.taskEnabled"          -> false,
+          "microservice.services.updated-print-suppressions.host" -> "localhost",
+          "microservice.services.updated-print-suppressions.port" -> wireMockServer.port()
+        )
+        .build()
+
+    implicit lazy val system: ActorSystem = ActorSystem()
+    implicit lazy val materializer: Materializer = Materializer(system)
+
+//    implicit def ec: ExecutionContext = global
+
+    val publisher = app.injector.instanceOf[PublishSubscribersPublisher]
+    val auditConnector = app.injector.instanceOf[AuditConnector]
+
+    val pcRepo = new PreferencesChangedRepository(mongoComponent, app.configuration)
+    val pcwiRepo = new PreferencesChangedWorkItemRepository(mongoComponent, app.configuration)
+
+    val epsSubscriber: Subscriber = app.injector.instanceOf[EpsHodsAdapterConnector]
+    val upsSubscriber: Subscriber = app.injector.instanceOf[UpdatedPrintSuppressionsConnector]
+
+    val service = new PublishSubscribersService(
+      new PreferencesChangedService(
+        pcRepo,
+        pcwiRepo,
+        Seq(epsSubscriber, upsSubscriber)
+      ),
+      publisher,
+      auditConnector,
+      app.configuration
+    )
+
+    pcRepo.collection.drop().toFuture().futureValue
+    pcwiRepo.collection.drop().toFuture().futureValue
+
     // push an item into the pc repo
     val prefId = new ObjectId()
     val entityId = UUID.randomUUID().toString

@@ -27,10 +27,11 @@ import play.api.Application
 import play.api.http.ContentTypes
 import play.api.http.Status.{ BAD_REQUEST, OK }
 import play.api.inject.guice.GuiceApplicationBuilder
-import play.api.libs.json.Json
+import play.api.libs.json.{ JsValue, Json }
 import play.api.test.Helpers.{ CONTENT_TYPE, contentAsString, defaultAwaitTimeout, status }
 import play.api.test.{ FakeHeaders, FakeRequest, Injecting }
 import uk.gov.hmrc.mongo.test.MongoSupport
+import uk.gov.hmrc.preferenceschangednotifier.WireMockUtil
 import uk.gov.hmrc.preferenceschangednotifier.controllers.{ PreferencesChangedController, routes }
 import uk.gov.hmrc.preferenceschangednotifier.repository.{ PreferencesChangedRepository, PreferencesChangedWorkItemRepository }
 
@@ -206,6 +207,5 @@ class PreferencesChangedControllerISpec
 
       contentAsString(result) must be(errStr)
     }
-
   }
 }
