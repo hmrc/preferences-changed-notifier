@@ -16,12 +16,11 @@
 
 package uk.gov.hmrc.preferenceschangednotifier.connectors
 
-import com.github.tomakehurst.wiremock.client.WireMock.{ aResponse, givenThat, post, urlEqualTo }
+import com.github.tomakehurst.wiremock.client.WireMock.{ aResponse, givenThat, post, urlEqualTo, urlPathMatching }
 import org.scalatest.{ BeforeAndAfterEach, EitherValues }
 import org.scalatest.concurrent.{ IntegrationPatience, ScalaFutures }
 import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.play.PlaySpec
-import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import play.api.Application
 import play.api.http.Status
 import play.api.http.Status.{ BAD_REQUEST, NOT_FOUND, OK }
@@ -36,67 +35,72 @@ import uk.gov.hmrc.preferenceschangednotifier.model.NotifySubscriberRequest
 import java.time.Instant
 import scala.concurrent.ExecutionContext
 
-class EpsHodsAdaptorConnectorSpec
-    extends PlaySpec with ScalaFutures with GuiceOneAppPerSuite with MockitoSugar with IntegrationPatience
-    with BeforeAndAfterEach with EitherValues with WireMockUtil {
-
-  override def fakeApplication(): Application =
-    GuiceApplicationBuilder()
-      .configure(
-        "metrics.enabled"                             -> false,
-        "microservice.services.eps-hods-adapter.host" -> "localhost",
-        "microservice.services.eps-hods-adapter.port" -> "22222"
-      )
-      .build()
-
-  val httpClient: HttpClientV2 = app.injector.instanceOf[HttpClientV2]
-  private val servicesConfig = app.injector.instanceOf[ServicesConfig]
-
-  implicit val ec: ExecutionContext = app.injector.instanceOf[ExecutionContext]
-  implicit val hc: HeaderCarrier = HeaderCarrier()
-
-  private val connector =
-    new EpsHodsAdapterConnector(httpClient, servicesConfig)
+class EpsHodsAdaptorConnectorISpec
+    extends PlaySpec with ScalaFutures with WireMockUtil with MockitoSugar with IntegrationPatience
+    with BeforeAndAfterEach with EitherValues {
 
   "Connector..." must {
-    "return ok when stub returns OK" in {
+    "return ok when stub returns OK" in new TestSetup {
       val req = new NotifySubscriberRequest(Paper, Instant.now(), taxIds = Map("nino" -> "AB112233C"))
 
-      givenThat(
+      wireMockServer.addStubMapping(
         post(urlEqualTo("/eps-hods-adapter/preferences/notify-subscriber"))
           .willReturn(
             aResponse()
               .withStatus(Status.OK)
           )
+          .build()
       )
 
-      val result = connector.notifySubscriber(req).futureValue
+      private val result = connector.notifySubscriber(req).futureValue
       result.foreach(r => r.status must be(OK))
     }
 
-    "return left bad-request" in {
+    "return left bad-request" in new TestSetup {
       val req = new NotifySubscriberRequest(Paper, Instant.now(), taxIds = Map("nino" -> "AB112233C"))
-
-      givenThat(
+      wireMockServer.addStubMapping(
         post(urlEqualTo("/eps-hods-adapter/preferences/notify-subscriber"))
           .willReturn(
             aResponse()
               .withStatus(Status.BAD_REQUEST)
           )
+          .build()
       )
 
       val result = connector.notifySubscriber(req).futureValue
       result.left.value.statusCode must be(BAD_REQUEST)
     }
 
-    "return left not found for bad url" in {
+    "return left not found for bad url" in new TestSetup {
       val req = new NotifySubscriberRequest(Paper, Instant.now(), taxIds = Map("nino" -> "AB112233C"))
 
-      givenThat(post(urlEqualTo("/eps-hods-adapter/preferences/notify-subscriberssss")))
+      wireMockServer.addStubMapping(
+        post(urlEqualTo("/eps-hods-adapter/preferences/notify-subscriberssss"))
+          .build()
+      )
 
       val result = connector.notifySubscriber(req).futureValue
       result.left.value.statusCode must be(NOT_FOUND)
     }
   }
 
+  trait TestSetup {
+    val app: Application =
+      GuiceApplicationBuilder()
+        .configure(
+          "metrics.enabled"                              -> false,
+          "microservice.services.eps-hods-adapter.host"  -> "localhost",
+          "microservice.services.eps-hods-adapter.port"  -> wireMockServer.port(),
+          "scheduling.PublishSubscribersJob.taskEnabled" -> false
+        )
+        .build()
+
+    val httpClient: HttpClientV2 = app.injector.instanceOf[HttpClientV2]
+    val servicesConfig: ServicesConfig = app.injector.instanceOf[ServicesConfig]
+
+    implicit val ec: ExecutionContext = app.injector.instanceOf[ExecutionContext]
+    implicit val hc: HeaderCarrier = HeaderCarrier()
+
+    val connector: EpsHodsAdapterConnector = new EpsHodsAdapterConnector(httpClient, servicesConfig)
+  }
 }
