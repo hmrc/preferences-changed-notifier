@@ -31,8 +31,6 @@ import play.api.libs.json.{ JsValue, Json }
 import play.api.test.Helpers.{ CONTENT_TYPE, contentAsString, defaultAwaitTimeout, status }
 import play.api.test.{ FakeHeaders, FakeRequest, Injecting }
 import uk.gov.hmrc.mongo.test.MongoSupport
-import uk.gov.hmrc.preferenceschangednotifier.WireMockUtil
-import uk.gov.hmrc.preferenceschangednotifier.controllers.{ PreferencesChangedController, routes }
 import uk.gov.hmrc.preferenceschangednotifier.repository.{ PreferencesChangedRepository, PreferencesChangedWorkItemRepository }
 
 import java.util.UUID
