@@ -3,7 +3,7 @@ import uk.gov.hmrc.DefaultBuildSettings.*
 val appName: String = "preferences-changed-notifier"
 
 ThisBuild / majorVersion := 1
-ThisBuild / scalaVersion := "3.3.3"
+ThisBuild / scalaVersion := "3.3.4"
 
 lazy val microservice = Project("preferences-changed-notifier", file("."))
   .enablePlugins(play.sbt.PlayScala, SbtDistributablesPlugin)
@@ -12,8 +12,15 @@ lazy val microservice = Project("preferences-changed-notifier", file("."))
     libraryDependencies ++= AppDependencies.compile ++ AppDependencies.test,
     // https://www.scala-lang.org/2021/01/12/configuring-and-suppressing-warnings.html
     // suppress warnings in generated routes files
-    scalacOptions += "-Wconf:src=routes/.*:s",
-    scalacOptions += "-feature"
+    scalacOptions ++= List(
+      "-feature",
+      // Silence unused imports in template files
+      "-Wconf:msg=unused import&src=.*:s",
+      // Silence "Flag -XXX set repeatedly"
+      "-Wconf:msg=Flag.*repeatedly:s",
+      // Silence unused warnings on Play `routes` files
+      "-Wconf:src=routes/.*:s"
+    )
   )
   .settings(resolvers += Resolver.jcenterRepo)
   .settings(CodeCoverageSettings.settings: _*)
@@ -22,6 +29,11 @@ lazy val it = Project(id = "it", base = file("it"))
   .enablePlugins(PlayScala, ScalafmtPlugin)
   .dependsOn(microservice % "test->test") // the "test->test" allows reusing test code and test dependencies
   .settings(libraryDependencies ++= AppDependencies.it)
+  .settings(
+    scalacOptions +=
+      // Silence "Flag -XXX set repeatedly"
+      "-Wconf:msg=Flag.*repeatedly:s"
+  )
 
 Test / test := (Test / test)
   .dependsOn(scalafmtCheckAll)

@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.preferenceschangednotifier.connectors
 
-import com.github.tomakehurst.wiremock.client.WireMock.{ aResponse, givenThat, post, urlEqualTo, urlPathMatching }
+import com.github.tomakehurst.wiremock.client.WireMock.{ aResponse, post, urlEqualTo }
 import org.scalatest.{ BeforeAndAfterEach, EitherValues }
 import org.scalatest.concurrent.{ IntegrationPatience, ScalaFutures }
 import org.scalatestplus.mockito.MockitoSugar

@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.preferenceschangednotifier.service
 
-import com.github.tomakehurst.wiremock.client.WireMock.{ aResponse, givenThat, post, urlEqualTo }
+import com.github.tomakehurst.wiremock.client.WireMock.{ aResponse, post, urlEqualTo }
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.Materializer
 import org.bson.types.ObjectId

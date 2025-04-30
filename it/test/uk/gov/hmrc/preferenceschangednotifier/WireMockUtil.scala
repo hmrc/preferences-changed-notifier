@@ -17,7 +17,6 @@
 package uk.gov.hmrc.preferenceschangednotifier
 
 import com.github.tomakehurst.wiremock.WireMockServer
-import com.github.tomakehurst.wiremock.client.WireMock
 import com.github.tomakehurst.wiremock.common.Slf4jNotifier
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig
 import org.scalatest.{ BeforeAndAfterAll, BeforeAndAfterEach, Suite }
