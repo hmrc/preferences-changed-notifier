@@ -17,6 +17,7 @@
 package uk.gov.hmrc.preferenceschangednotifier.service
 
 import play.api.Logging
+import play.api.http.Status.TOO_MANY_REQUESTS
 import uk.gov.hmrc.http.{ HeaderCarrier, HttpResponse, UpstreamErrorResponse }
 import uk.gov.hmrc.http.UpstreamErrorResponse.{ Upstream4xxResponse, Upstream5xxResponse }
 import uk.gov.hmrc.mongo.workitem.ProcessingStatus.{ Failed, PermanentlyFailed }
@@ -69,23 +70,23 @@ class PublishSubscribersPublisher @Inject() (
               )
             }
 
+        // Treat 429 as recoverable - mean work-item will be retried
+        case Left(e @ UpstreamErrorResponse(message, TOO_MANY_REQUESTS, _, _)) =>
+          processRecoverable(workItem, subscriber, e)
+
+        // All other 4XX responses cannot be retried, so will be marked as permanently failed
         case Left(Upstream4xxResponse(e)) =>
           processUnrecoverable(workItem, subscriber, e)
 
+        // All 5XX responses are retried
         case Left(Upstream5xxResponse(e)) =>
           processRecoverable(workItem, subscriber, e)
 
-        case Left(UpstreamErrorResponse(message, status, _, _)) =>
-          logger.error(s"publish to subscriber ${subscriber.toString} returned unexpected response: $status, $message")
+        case res =>
+          logger.error(s"publish to subscriber ${subscriber.toString} returned unexpected result: $res")
           service
             .completeWithStatus(workItem, Failed)
-            .map(_ => Left(s"with http response: $status, $message"))
-
-        case null =>
-          logger.error(s"publish to subscriber ${subscriber.toString} returned unexpected result: null")
-          service
-            .completeWithStatus(workItem, Failed)
-            .map(_ => Left(s"Unexpected result: null"))
+            .map(_ => Left(s"Unexpected result: $res"))
       }
       .recoverWith { case ex =>
         recoverNotify(workItem, ex)
@@ -122,38 +123,34 @@ class PublishSubscribersPublisher @Inject() (
     workItem: WorkItem[PCR],
     subscriber: Subscriber,
     e: UpstreamErrorResponse
-  ): Future[Either[String, Result]] =
-    if (workItem.failureCount > 10) {
-      val msg: String = s"publish to subscriber ${subscriber.toString}" +
-        s"failed ${workItem.failureCount} times, marking as permanently failed\nError: $e"
+  ): Future[Either[String, Result]] = {
+    val (message, processingState) =
+      if (workItem.failureCount > 10) {
+        val msg: String = s"publish to subscriber ${subscriber.name}" +
+          s" failed ${workItem.failureCount} times, marking as permanently failed\nError: $e"
+        logger.error(msg)
+        (msg, PermanentlyFailed)
+      } else {
+        val msg =
+          s"publish to subscriber ${subscriber.name} failed, with HTTP response: [${e.message}], will retry"
+        logger.debug(msg)
+        (msg, Failed)
+      }
 
-      logger.error(msg)
-      service
-        .completeWithStatus(workItem, PermanentlyFailed)
-        .map { (a: Boolean) =>
-          Left(s"$msg. Workitem updated $a")
-        }
-      // TODO: AUDIT LOG
-    } else {
-      val msg =
-        s"publish to subscriber ${subscriber.toString} failed, with HTTP response: [${e.message}], will retry"
-      logger.debug(msg)
-
-      service
-        .completeWithStatus(workItem, Failed)
-        .map { (a: Boolean) =>
-          Left(s"$msg. Workitem updated $a")
-        }
-
-    }
+    service
+      .completeWithStatus(workItem, processingState)
+      .map { (a: Boolean) =>
+        Left(s"$message. Workitem updated $a")
+      }
+    // TODO: AUDIT LOG
+  }
 
   private def processUnrecoverable(
     workItem: WorkItem[PCR],
     subscriber: Subscriber,
     e: UpstreamErrorResponse
   ): Future[Either[String, Result]] = {
-    val msg =
-      s"publish to subscriber ${subscriber.toString} permanently failed returning $e"
+    val msg = s"publish to subscriber ${subscriber.name} permanently failed returning $e"
     logger.error(msg)
 
     service
