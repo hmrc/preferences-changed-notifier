@@ -84,7 +84,7 @@ class PublishSubscribersServiceISpec
 
       wireMockServer.addStubMapping(
         post(urlEqualTo("/eps-hods-adapter/preferences/notify-subscriber"))
-          .willReturn(aResponse().withStatus(Status.OK)) // .withBody("An internal_server_error message"))
+          .willReturn(aResponse().withStatus(Status.OK))
           .build()
       )
       wireMockServer.addStubMapping(
@@ -111,17 +111,26 @@ class PublishSubscribersServiceISpec
           .willReturn(aResponse().withStatus(Status.BAD_REQUEST).withBody("A bad_request message"))
           .build()
       )
-      wireMockServer.addStubMapping(
-        post(urlEqualTo("/preferences/notify-subscriber"))
-          .willReturn(aResponse().withStatus(Status.BAD_REQUEST).withBody("A bad_request message"))
-          .build()
-      )
+
       private val result = service.execute.futureValue
       result.message must include("permanently failed")
       result.message must include("'A bad_request message'")
     }
 
-    "return Failed (which is retried) when stub returns 5XX error" in new TestSetup {
+    "return Failed (which is retried) when eps-hods-adapter returns 429 error" in new TestSetup {
+      setupData()
+
+      wireMockServer.addStubMapping(
+        post(urlEqualTo("/eps-hods-adapter/preferences/notify-subscriber"))
+          .willReturn(aResponse().withStatus(Status.TOO_MANY_REQUESTS))
+          .build()
+      )
+
+      private val result = service.execute.futureValue
+      result.message must include("will retry")
+    }
+
+    "return Failed (which is retried) when subscriber returns 5XX error" in new TestSetup {
       setupData()
       wireMockServer.addStubMapping(
         post(urlEqualTo("/eps-hods-adapter/preferences/notify-subscriber"))
@@ -140,7 +149,7 @@ class PublishSubscribersServiceISpec
       result.message must include("An internal_server_error message")
     }
 
-    "return Failed (which is retried) when returns a non 200 status" in new TestSetup {
+    "return Failed (which is retried) when subscriber returns a non 200 status" in new TestSetup {
       val wi = setupData()
       wireMockServer.addStubMapping(
         post(urlEqualTo("/eps-hods-adapter/preferences/notify-subscriber"))
