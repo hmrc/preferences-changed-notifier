@@ -91,6 +91,7 @@ class PublishSubscribersService @Inject() (
       .execute(NotifySubscriberRequest(pc), workItem)
       .map {
         case Right(result) =>
+          audit(pc)
           result
         case Left(msg) =>
           audit(pc, msg)
@@ -109,6 +110,17 @@ class PublishSubscribersService @Inject() (
       )
     )
   }
+
+  private def audit(pc: PreferencesChanged): Unit =
+    auditConnector.sendExplicitAudit(
+      auditType = "notify-subscriber-success",
+      detail = Map(
+        "nino"         -> s"${pc.taxIds.getOrElse("nino", "Not found")}",
+        "saUtr"        -> s"${pc.taxIds.getOrElse("sautr", "Not found")}",
+        "preferenceId" -> s"${pc.preferenceId}",
+        "printStatus"  -> pc.changedValue.name
+      )
+    )
 
   private def audit(workItem: WorkItem[PreferencesChangedRef], msg: String): Unit = {
     logger.error(s"Failed to find preferencesChanged document: $msg")
