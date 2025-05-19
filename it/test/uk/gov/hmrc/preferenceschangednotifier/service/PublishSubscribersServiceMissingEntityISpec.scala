@@ -154,7 +154,8 @@ class PublishSubscribersServiceMissingEntityISpec
       preferenceId = prefId,
       entityId = entityId,
       updatedAt = Instant.now(),
-      taxIds = Map("nino" -> "AB112233C")
+      taxIds = Map("nino" -> "AB112233C"),
+      bounced = true
     )
 
     // insert a preference changed document

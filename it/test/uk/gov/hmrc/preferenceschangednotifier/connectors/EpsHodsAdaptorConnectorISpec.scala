@@ -41,7 +41,7 @@ class EpsHodsAdaptorConnectorISpec
 
   "Connector..." must {
     "return ok when stub returns OK" in new TestSetup {
-      val req = new NotifySubscriberRequest(Paper, Instant.now(), taxIds = Map("nino" -> "AB112233C"))
+      val req = new NotifySubscriberRequest(Paper, Instant.now(), taxIds = Map("nino" -> "AB112233C"), false)
 
       wireMockServer.addStubMapping(
         post(urlEqualTo("/eps-hods-adapter/preferences/notify-subscriber"))
@@ -57,7 +57,7 @@ class EpsHodsAdaptorConnectorISpec
     }
 
     "return left bad-request" in new TestSetup {
-      val req = new NotifySubscriberRequest(Paper, Instant.now(), taxIds = Map("nino" -> "AB112233C"))
+      val req = new NotifySubscriberRequest(Paper, Instant.now(), taxIds = Map("nino" -> "AB112233C"), true)
       wireMockServer.addStubMapping(
         post(urlEqualTo("/eps-hods-adapter/preferences/notify-subscriber"))
           .willReturn(
@@ -72,7 +72,7 @@ class EpsHodsAdaptorConnectorISpec
     }
 
     "return left not found for bad url" in new TestSetup {
-      val req = new NotifySubscriberRequest(Paper, Instant.now(), taxIds = Map("nino" -> "AB112233C"))
+      val req = new NotifySubscriberRequest(Paper, Instant.now(), taxIds = Map("nino" -> "AB112233C"), true)
 
       wireMockServer.addStubMapping(
         post(urlEqualTo("/eps-hods-adapter/preferences/notify-subscriberssss"))
