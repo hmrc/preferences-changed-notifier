@@ -84,7 +84,8 @@ class PreferencesChangedRepositorySpec
         Paper,
         new ObjectId(),
         Instant.now(),
-        Map("nino" -> "AB112233D")
+        Map("nino" -> "AB112233D"),
+        true
       )
       val result = preferencesChangedRepository.upsert(a).futureValue
       result._id mustNot be(null)
@@ -96,7 +97,15 @@ class PreferencesChangedRepositorySpec
       val entityId = UUID.randomUUID().toString
 
       val a =
-        PreferencesChanged(_id = objectId, entityId, Paper, preferenceId, Instant.now(), Map("nino" -> "AB112233D"))
+        PreferencesChanged(
+          _id = objectId,
+          entityId,
+          Paper,
+          preferenceId,
+          Instant.now(),
+          Map("nino" -> "AB112233D"),
+          true
+        )
       val r1 = preferencesChangedRepository.collection.insertOne(a).toFuture().futureValue
       r1.wasAcknowledged() mustEqual true
 
@@ -106,7 +115,8 @@ class PreferencesChangedRepositorySpec
         Digital,
         preferenceId,
         Instant.now(),
-        Map("nino" -> "AB112233D")
+        Map("nino" -> "AB112233D"),
+        false
       )
       val r2 = preferencesChangedRepository.upsert(item = b).futureValue
       r2._id must be(objectId)
@@ -132,7 +142,15 @@ class PreferencesChangedRepositorySpec
       val objectId2 = new ObjectId()
 
       val a =
-        PreferencesChanged(_id = objectId1, entityId1, Paper, preferenceId1, Instant.now(), Map("nino" -> "AB112233D"))
+        PreferencesChanged(
+          _id = objectId1,
+          entityId1,
+          Paper,
+          preferenceId1,
+          Instant.now(),
+          Map("nino" -> "AB112233D"),
+          true
+        )
 
       // Insert object A
       val r1 = preferencesChangedRepository.collection.insertOne(a).toFuture().futureValue
@@ -144,7 +162,8 @@ class PreferencesChangedRepositorySpec
         Digital,
         preferenceId2,
         Instant.now(),
-        Map("nino" -> "AB112233A")
+        Map("nino" -> "AB112233A"),
+        false
       )
 
       val r2 = preferencesChangedRepository.upsert(item = b).futureValue

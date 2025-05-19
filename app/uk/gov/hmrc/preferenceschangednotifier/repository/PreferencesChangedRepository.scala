@@ -79,6 +79,7 @@ class PreferencesChangedRepository @Inject() (mongo: MongoComponent, config: Con
     Updates.combine(
       // for updates, no need to specify preferenceId because we found it!
       Updates.set("changedValue", item.changedValue.name),
+      Updates.set("bounced", item.bounced),
       Updates.set("updatedAt", item.updatedAt),
       Updates.set("taxIds", item.taxIds),
       Updates.set("preferenceId", item.preferenceId),

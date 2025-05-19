@@ -72,7 +72,8 @@ class PreferencesChangedServiceSpec extends AnyFreeSpec with ScalaFutures with B
               changedValue = Paper,
               preferenceId = pId,
               updatedAt = Instant.now(),
-              Map.empty
+              Map.empty,
+              true
             )
           )
         )
@@ -82,7 +83,8 @@ class PreferencesChangedServiceSpec extends AnyFreeSpec with ScalaFutures with B
         new ObjectId().toString,
         entityId,
         Instant.now,
-        taxIds = Map.empty
+        taxIds = Map.empty,
+        true
       )
       val result =
         svc.preferenceChanged(pcr).value.futureValue
@@ -98,7 +100,8 @@ class PreferencesChangedServiceSpec extends AnyFreeSpec with ScalaFutures with B
         changedValue = Paper,
         preferenceId = new ObjectId("75259498e6baf61da75dceef"),
         updatedAt = Instant.now(),
-        Map("nino" -> "AB112233A")
+        Map("nino" -> "AB112233A"),
+        false
       )
 
       when(repo.upsert(any[PreferencesChanged]))
@@ -110,7 +113,8 @@ class PreferencesChangedServiceSpec extends AnyFreeSpec with ScalaFutures with B
         changedValue = Digital,
         preferenceId = new ObjectId("75259498e6baf61da75dceef"),
         updatedAt = Instant.now(),
-        Map("nino" -> "AB112233A")
+        Map("nino" -> "AB112233A"),
+        false
       )
 
       when(repo.upsert(any[PreferencesChanged]))
@@ -138,7 +142,8 @@ class PreferencesChangedServiceSpec extends AnyFreeSpec with ScalaFutures with B
         preferenceId = pc1.preferenceId.toString,
         entityId,
         Instant.now,
-        taxIds = Map("nino" -> "AB112233A")
+        taxIds = Map("nino" -> "AB112233A"),
+        false
       )
 
       when(epsConnector.taxIdsValid(any[Map[String, String]])).thenReturn(true)
@@ -162,7 +167,8 @@ class PreferencesChangedServiceSpec extends AnyFreeSpec with ScalaFutures with B
         changedValue = Paper,
         preferenceId = new ObjectId("75259498e6baf61da75dceef"),
         updatedAt = Instant.now(),
-        Map.empty
+        Map.empty,
+        false
       )
 
       when(repo.upsert(any[PreferencesChanged]))
@@ -173,7 +179,8 @@ class PreferencesChangedServiceSpec extends AnyFreeSpec with ScalaFutures with B
         preferenceId = pc.preferenceId.toString,
         entityId,
         Instant.now,
-        taxIds = Map.empty
+        taxIds = Map.empty,
+        false
       )
 
       val pcref =
@@ -211,7 +218,8 @@ class PreferencesChangedServiceSpec extends AnyFreeSpec with ScalaFutures with B
         new ObjectId("75259498e6baf61da75dceef").toString,
         entityId,
         Instant.now,
-        taxIds = Map.empty
+        taxIds = Map.empty,
+        true
       )
       val result =
         svc.preferenceChanged(pcr).value.futureValue
@@ -230,7 +238,8 @@ class PreferencesChangedServiceSpec extends AnyFreeSpec with ScalaFutures with B
         new ObjectId().toString,
         entityId,
         Instant.now,
-        taxIds = Map.empty
+        taxIds = Map.empty,
+        false
       )
       val result =
         svc.preferenceChanged(pcr).value.futureValue
@@ -244,7 +253,7 @@ class PreferencesChangedServiceSpec extends AnyFreeSpec with ScalaFutures with B
       when(repo.upsert(any[PreferencesChanged]))
         .thenThrow(new RuntimeException("whoa, throwing!"))
 
-      val pcr = PreferencesChangedRequest(Paper, new ObjectId().toString, entityId, Instant.now, Map.empty)
+      val pcr = PreferencesChangedRequest(Paper, new ObjectId().toString, entityId, Instant.now, Map.empty, true)
 
       val result =
         svc.preferenceChanged(pcr).value.futureValue
