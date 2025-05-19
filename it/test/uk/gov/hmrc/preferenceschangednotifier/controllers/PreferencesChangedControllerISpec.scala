@@ -74,7 +74,8 @@ class PreferencesChangedControllerISpec
            |  "preferenceId" : "65263df8d843592d74a2bfc6",
            |  "entityId"     : "$entityId",
            |  "updatedAt"    : "2023-10-11T01:30:00.000Z",
-           |  "taxIds"       : { "nino" : "AB112233C", "sautr" : "abcde" }
+           |  "taxIds"       : { "nino" : "AB112233C", "sautr" : "abcde" },
+           |  "bounced"      : true
            |}""".stripMargin
 
       val fakePostRequest = createFakePostRequest(reqBody)
@@ -96,7 +97,8 @@ class PreferencesChangedControllerISpec
            |  "preferenceId" : "65263df8d843592d74a2bfc6",
            |  "entityId"     : "$entityId",
            |  "updatedAt"    : "2023-10-11T01:30:00.000Z",
-           |  "taxIds"       : {}
+           |  "taxIds"       : {},
+           |  "bounced"      : true
            |}""".stripMargin
 
       val fakePostRequest = createFakePostRequest(reqBody)
@@ -118,7 +120,8 @@ class PreferencesChangedControllerISpec
            |  "preferenceId" : "65263df8d843592d74a2bfc6",
            |  "entityId"     : "$entityId",
            |  "updatedAt"    : "2023-10-11T01:30:00.000Z",
-           |  "taxIds"       : { "nino" : "AB112233C" }
+           |  "taxIds"       : { "nino" : "AB112233C" },
+           |  "bounced"      : false
            |}""".stripMargin
 
       val fakePostRequest = createFakePostRequest(reqBody)
@@ -144,7 +147,8 @@ class PreferencesChangedControllerISpec
            |  "preferenceId" : "65263df8d843592d74a2bfc6",
            |  "entityId"     : "$entityId",
            |  "updatedAt"    : "2023-10-11T01:30:00.000Z",
-           |  "taxIds"       : { "sautr" : "abcde" }
+           |  "taxIds"       : { "sautr" : "abcde" },
+           |  "bounced"      : false
            |}""".stripMargin
 
       val fakePostRequest = createFakePostRequest(reqBody)
@@ -170,7 +174,8 @@ class PreferencesChangedControllerISpec
            |"preferenceId" : "65263df8d843592d74a2bfc6",
            |"entityId"     : "$entityId",
            |"updatedAt"    : "023-10-11T01:30:00.000Z",
-           |"taxIds"       : {"nino":"AB112233C"}
+           |"taxIds"       : {"nino":"AB112233C"},
+           |"bounced"      : true
            |}""".stripMargin
 
       val fakePostRequest = createFakePostRequest(reqBody)
@@ -192,7 +197,8 @@ class PreferencesChangedControllerISpec
            |  "preferenceId" : "5555",
            |  "entityId"     : "$entityId",
            |  "updatedAt"    : "2023-10-11T01:30:00.000Z",
-           |  "taxIds"       : {"nino":"AB112233C"}
+           |  "taxIds"       : {"nino":"AB112233C"},
+           |  "bounced"      : true
            |}""".stripMargin
 
       val fakePostRequest = createFakePostRequest(reqBody)
