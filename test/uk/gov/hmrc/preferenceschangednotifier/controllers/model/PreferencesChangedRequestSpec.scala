@@ -59,14 +59,16 @@ class PreferencesChangedRequestSpec extends AnyFreeSpec {
     changedValue: String = "paper",
     preferenceId: String = "65263df8d843592d74a2bfc6",
     updatedAt: String = "2023-10-11T01:30:00.000Z",
-    taxIds: String = """ { "nino" : "AB112233C" }"""
+    taxIds: String = """ { "nino" : "AB112233C" }""",
+    bounced: Boolean = true
   ) =
     Json.parse(s"""{
                   |  "changedValue" : "$changedValue",
                   |  "preferenceId" : "$preferenceId",
                   |  "entityId"     : "${UUID.randomUUID().toString}",
                   |  "updatedAt"    : "$updatedAt",
-                  |  "taxIds"       :  $taxIds
+                  |  "taxIds"       :  $taxIds,
+                  |  "bounced"      :  $bounced
                   |}
                   |""".stripMargin)
 }

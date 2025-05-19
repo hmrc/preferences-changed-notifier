@@ -24,12 +24,13 @@ import java.time.Instant
 case class NotifySubscriberRequest(
   changedValue: MessageDeliveryFormat,
   updatedAt: Instant,
-  taxIds: Map[String, String]
+  taxIds: Map[String, String],
+  bounced: Boolean
 )
 
 object NotifySubscriberRequest {
   def apply(pc: PreferencesChanged): NotifySubscriberRequest =
-    NotifySubscriberRequest(pc.changedValue, pc.updatedAt, pc.taxIds)
+    NotifySubscriberRequest(pc.changedValue, pc.updatedAt, pc.taxIds, pc.bounced)
 
   private implicit val dtf: Writes[Instant] =
     RestInstantFormat.writes

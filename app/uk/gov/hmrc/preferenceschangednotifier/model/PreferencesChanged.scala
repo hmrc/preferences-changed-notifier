@@ -33,7 +33,8 @@ case class PreferencesChanged(
   changedValue: MessageDeliveryFormat,
   preferenceId: ObjectId,
   updatedAt: Instant,
-  taxIds: Map[String, String]
+  taxIds: Map[String, String],
+  bounced: Boolean
 )
 
 object PreferencesChanged {
@@ -46,7 +47,8 @@ object PreferencesChanged {
       changedValue = pcRequest.changedValue,
       preferenceId = new ObjectId(pcRequest.preferenceId),
       updatedAt = pcRequest.updatedAt,
-      taxIds = pcRequest.taxIds
+      taxIds = pcRequest.taxIds,
+      bounced = pcRequest.bounced
     )
 
   implicit val objectIdFormat: Format[ObjectId] = MongoFormats.objectIdFormat

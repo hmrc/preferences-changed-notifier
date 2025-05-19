@@ -252,7 +252,8 @@ class PublishSubscribersServiceISpec
         preferenceId = prefId,
         entityId = entityId,
         updatedAt = Instant.now(),
-        taxIds = taxIds // Map("nino" -> "YY000200A", "sautr" -> "SAUTR1")
+        taxIds = taxIds, // Map("nino" -> "YY000200A", "sautr" -> "SAUTR1")
+        bounced = true
       )
   }
 }

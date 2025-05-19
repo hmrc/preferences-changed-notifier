@@ -67,7 +67,8 @@ class PreferencesChangedControllerSpec extends AnyFreeSpec with Matchers {
            |  "preferenceId" : "${new ObjectId().toString}",
            |  "entityId"     : "${UUID.randomUUID().toString}",
            |  "updatedAt"    : "${Instant.now()}",
-           |  "taxIds"       : { "nino" : "AB112233C", "sautr" : "abcde" }
+           |  "taxIds"       : { "nino" : "AB112233C", "sautr" : "abcde" },
+           |  "bounced"      : true
            |}""".stripMargin
 
       val fakePostRequest =
@@ -89,7 +90,8 @@ class PreferencesChangedControllerSpec extends AnyFreeSpec with Matchers {
            |"preferenceId": "5555",
            |"entityId"    : "${UUID.randomUUID().toString}",
            |"updatedAt"   : "023-10-11T01:30:00.000Z",
-           |"taxIds"      : {"nino":"AB112233C"}
+           |"taxIds"      : {"nino":"AB112233C"},
+           |"bounced"     : true
            |}""".stripMargin
 
       val fakePostRequest =
@@ -112,7 +114,8 @@ class PreferencesChangedControllerSpec extends AnyFreeSpec with Matchers {
            |  "preferenceId" : "${pid.toString}",
            |  "entityId"     : "${UUID.randomUUID().toString}",
            |  "updatedAt"    : "2023-10-11T09:30:00.000Z",
-           |  "taxIds"       : { "nino" : "AB112233C" }
+           |  "taxIds"       : { "nino" : "AB112233C" },
+           |  "bounced"      : true
            |}
            |""".stripMargin
 
@@ -134,7 +137,8 @@ class PreferencesChangedControllerSpec extends AnyFreeSpec with Matchers {
            |  "preferenceId" : "${new ObjectId().toString}",
            |  "entityId"     : "${UUID.randomUUID().toString}",
            |  "updatedAt"    : "${Instant.now()}",
-           |  "taxIds"       : { "nino" : "AB112233C", "sautr" : "abcde" }
+           |  "taxIds"       : { "nino" : "AB112233C", "sautr" : "abcde" },
+           |  "bounced"      : false
            |}""".stripMargin
 
       val fakePostRequest =
@@ -154,7 +158,8 @@ class PreferencesChangedControllerSpec extends AnyFreeSpec with Matchers {
            |  "preferenceId" : "${new ObjectId().toString}",
            |  "entityId"     : "${UUID.randomUUID().toString}",
            |  "updatedAt"    : "${Instant.now()}",
-           |  "taxIds"       : { "nino" : "AB112233C", "sautr" : "abcde" }
+           |  "taxIds"       : { "nino" : "AB112233C", "sautr" : "abcde" },
+           |  "bounced"      : true
            |}""".stripMargin
 
       val fakePostRequest =

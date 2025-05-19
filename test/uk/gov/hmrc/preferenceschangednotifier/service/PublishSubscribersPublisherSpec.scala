@@ -77,7 +77,7 @@ class PublishSubscribersPublisherSpec extends AnyFreeSpec with ScalaFutures with
 
     "should complete with success for 200 OK" in {
       val svc = new PublishSubscribersPublisher(preferencesChangedService, subscribers)
-      val req = NotifySubscriberRequest(Digital, Instant.now(), Map("nino" -> "AB112233A"))
+      val req = NotifySubscriberRequest(Digital, Instant.now(), Map("nino" -> "AB112233A"), false)
 
       val workItem = createWorkItem
 
@@ -94,7 +94,7 @@ class PublishSubscribersPublisherSpec extends AnyFreeSpec with ScalaFutures with
 
     "should complete with retry Failure for 429 TOO_MANY_REQUESTS" in {
       val svc = new PublishSubscribersPublisher(preferencesChangedService, subscribers)
-      val req = NotifySubscriberRequest(Digital, Instant.now(), Map("nino" -> "AB112233A"))
+      val req = NotifySubscriberRequest(Digital, Instant.now(), Map("nino" -> "AB112233A"), false)
 
       when(epsConnector.notifySubscriber(any)(any, any))
         .thenReturn(Future(Left(UpstreamErrorResponse("Oops", TOO_MANY_REQUESTS, 0, Map.empty))))
@@ -114,7 +114,7 @@ class PublishSubscribersPublisherSpec extends AnyFreeSpec with ScalaFutures with
 
     "should complete with PermanentFailure for 429 TOO_MANY_REQUESTS if retry limit is reached" in {
       val svc = new PublishSubscribersPublisher(preferencesChangedService, subscribers)
-      val req = NotifySubscriberRequest(Digital, Instant.now(), Map("nino" -> "AB112233A"))
+      val req = NotifySubscriberRequest(Digital, Instant.now(), Map("nino" -> "AB112233A"), false)
 
       when(epsConnector.notifySubscriber(any)(any, any))
         .thenReturn(Future(Left(UpstreamErrorResponse("Oops", TOO_MANY_REQUESTS, 0, Map.empty))))
@@ -138,7 +138,7 @@ class PublishSubscribersPublisherSpec extends AnyFreeSpec with ScalaFutures with
     // unrecoverable for any other 4XX
     "should complete with PermanentFailure for 400 BAD_REQUEST" in {
       val svc = new PublishSubscribersPublisher(preferencesChangedService, subscribers)
-      val req = NotifySubscriberRequest(Digital, Instant.now(), Map("nino" -> "AB112233A"))
+      val req = NotifySubscriberRequest(Digital, Instant.now(), Map("nino" -> "AB112233A"), false)
 
       when(epsConnector.notifySubscriber(any)(any, any))
         .thenReturn(Future(Left(UpstreamErrorResponse("Oops", BAD_REQUEST, 0, Map.empty))))
@@ -160,7 +160,7 @@ class PublishSubscribersPublisherSpec extends AnyFreeSpec with ScalaFutures with
     // recoverable 5XX
     "should complete with retryable Failure for 500 INTERNAL_SERVER_ERROR" in {
       val svc = new PublishSubscribersPublisher(preferencesChangedService, subscribers)
-      val req = NotifySubscriberRequest(Digital, Instant.now(), Map("nino" -> "AB112233A"))
+      val req = NotifySubscriberRequest(Digital, Instant.now(), Map("nino" -> "AB112233A"), false)
 
       when(epsConnector.notifySubscriber(any)(any, any))
         .thenReturn(Future(Left(UpstreamErrorResponse("Oops", INTERNAL_SERVER_ERROR, 0, Map.empty))))

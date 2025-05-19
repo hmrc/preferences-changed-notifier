@@ -26,7 +26,8 @@ case class PreferencesChangedRequest(
   preferenceId: String,
   entityId: String,
   updatedAt: Instant,
-  taxIds: Map[String, String]
+  taxIds: Map[String, String],
+  bounced: Boolean
 )
 
 object PreferencesChangedRequest {

@@ -43,7 +43,8 @@ class PreferencesChangedSpec extends AnyFreeSpec {
         updatedAt = Instant.now(),
         taxIds = Map(
           "nino" -> "AB112233D"
-        )
+        ),
+        false
       )
 
       val writer = PreferencesChanged.writes
@@ -62,7 +63,8 @@ class PreferencesChangedSpec extends AnyFreeSpec {
         updatedAt = now,
         taxIds = Map(
           "nino" -> "AB112233D"
-        )
+        ),
+        true
       )
 
       val writer = PreferencesChanged.writes
@@ -84,7 +86,8 @@ class PreferencesChangedSpec extends AnyFreeSpec {
         updatedAt = Instant.now(),
         taxIds = Map(
           "nino" -> "AB112233D"
-        )
+        ),
+        true
       )
 
       val writer = PreferencesChanged.writes
@@ -104,7 +107,8 @@ class PreferencesChangedSpec extends AnyFreeSpec {
         taxIds = Map(
           "nino"  -> "AB112233D",
           "sautr" -> "sautr1"
-        )
+        ),
+        false
       )
 
       val writer = PreferencesChanged.writes
@@ -125,7 +129,8 @@ class PreferencesChangedSpec extends AnyFreeSpec {
         preferenceId = pid.toString,
         entityId = entityId,
         updatedAt = Instant.now(),
-        taxIds = Map.empty
+        taxIds = Map.empty,
+        true
       )
       val a = PreferencesChanged.from(req)
       a.preferenceId mustEqual (new ObjectId(req.preferenceId))
@@ -137,7 +142,8 @@ class PreferencesChangedSpec extends AnyFreeSpec {
         preferenceId = "111",
         entityId = entityId,
         updatedAt = Instant.now(),
-        taxIds = Map.empty
+        taxIds = Map.empty,
+        false
       )
 
       the[IllegalArgumentException] thrownBy {
@@ -151,7 +157,8 @@ class PreferencesChangedSpec extends AnyFreeSpec {
         preferenceId = new ObjectId().toString,
         entityId = entityId,
         updatedAt = Instant.now(),
-        taxIds = Map("taxId1" -> "1234")
+        taxIds = Map("taxId1" -> "1234"),
+        true
       )
       val a = PreferencesChanged.from(req)
       a.taxIds must equal(Map("taxId1" -> "1234"))
