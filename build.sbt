@@ -22,7 +22,6 @@ lazy val microservice = Project("preferences-changed-notifier", file("."))
       "-Wconf:src=routes/.*:s"
     )
   )
-  .settings(resolvers += Resolver.jcenterRepo)
   .settings(CodeCoverageSettings.settings: _*)
 
 lazy val it = Project(id = "it", base = file("it"))
