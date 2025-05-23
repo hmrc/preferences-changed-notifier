@@ -18,23 +18,30 @@ package uk.gov.hmrc.preferenceschangednotifier.service
 
 import play.api.Logging
 import play.api.http.Status.TOO_MANY_REQUESTS
+import play.api.libs.json.{ JsObject, JsString, Json }
 import uk.gov.hmrc.http.{ HeaderCarrier, HttpResponse, UpstreamErrorResponse }
 import uk.gov.hmrc.http.UpstreamErrorResponse.{ Upstream4xxResponse, Upstream5xxResponse }
 import uk.gov.hmrc.mongo.workitem.ProcessingStatus.{ Failed, PermanentlyFailed }
-import uk.gov.hmrc.mongo.workitem.WorkItem
+import uk.gov.hmrc.mongo.workitem.{ ProcessingStatus, WorkItem }
+import uk.gov.hmrc.play.audit.http.connector.AuditConnector
+import uk.gov.hmrc.play.audit.model.ExtendedDataEvent
 import uk.gov.hmrc.preferenceschangednotifier.connectors.Subscriber
 import uk.gov.hmrc.preferenceschangednotifier.model.{ NotifySubscriberRequest, PreferencesChangedRef }
 import uk.gov.hmrc.preferenceschangednotifier.scheduling.Result
 
+import java.util.UUID
 import javax.inject.{ Inject, Singleton }
 import scala.concurrent.{ ExecutionContext, Future }
 
 @Singleton
 class PublishSubscribersPublisher @Inject() (
   service: PreferencesChangedService,
-  subscribers: Seq[Subscriber]
+  subscribers: Seq[Subscriber],
+  auditConnector: AuditConnector
 )(implicit ec: ExecutionContext)
     extends Logging {
+
+  private implicit val hc: HeaderCarrier = HeaderCarrier()
 
   private type PCR = PreferencesChangedRef
 
@@ -83,25 +90,37 @@ class PublishSubscribersPublisher @Inject() (
           processRecoverable(workItem, subscriber, e)
 
         case res =>
-          logger.error(s"publish to subscriber ${subscriber.toString} returned unexpected result: $res")
+          val msg = s"publish to subscriber ${subscriber.toString} returned unexpected result: $res"
+          val processingStatus = Failed
+          logger.error(msg)
           service
-            .completeWithStatus(workItem, Failed)
-            .map(_ => Left(s"Unexpected result: $res"))
+            .completeWithStatus(workItem, processingStatus)
+            .map { _ =>
+              audit(buildAuditEvent(workItem, processingStatus, msg, subscriber))
+              Left(msg)
+            }
       }
       .recoverWith { case ex =>
-        recoverNotify(workItem, ex)
+        recoverNotify(workItem, subscriber, ex)
       }
 
   }
 
-  private def recoverNotify(workItem: WorkItem[PCR], ex: Throwable): Future[Either[String, Result]] =
+  private def recoverNotify(
+    workItem: WorkItem[PCR],
+    subscriber: Subscriber,
+    ex: Throwable
+  ): Future[Either[String, Result]] = {
+    val processingStatus = Failed
     service
-      .completeWithStatus(workItem, Failed)
-      .map { r =>
-        Left(
-          s"$r\nNotify error, marking workitem [${workItem.id}] as Failed\nException: $ex"
-        )
+      .completeWithStatus(workItem, processingStatus)
+      .map { isOk =>
+        val msg = s"updated workitem: $isOk, status: $processingStatus\n" +
+          s"Notify error, marking workitem [${workItem.id}] as Failed\nException: $ex"
+        audit(buildAuditEvent(workItem, processingStatus, msg, subscriber))
+        Left(msg)
       }
+  }
 
   private def missingSubscriber(workItem: WorkItem[PCR]): Future[Either[String, Result]] = {
     logger.warn(s"Unknown subscriber: ${workItem.item.subscriber}; valid subscribers are: ${subscribers
@@ -140,9 +159,9 @@ class PublishSubscribersPublisher @Inject() (
     service
       .completeWithStatus(workItem, processingState)
       .map { (a: Boolean) =>
+        audit(buildAuditEvent(workItem, processingState, message, subscriber))
         Left(s"$message. Workitem updated $a")
       }
-    // TODO: AUDIT LOG
   }
 
   private def processUnrecoverable(
@@ -156,9 +175,29 @@ class PublishSubscribersPublisher @Inject() (
     service
       .completeWithStatus(workItem, PermanentlyFailed)
       .map { (a: Boolean) =>
+        audit(buildAuditEvent(workItem, PermanentlyFailed, msg, subscriber))
         Left(s"$msg. Workitem updated $a")
       }
-    // TODO: AUDIT LOG
   }
 
+  private def buildAuditEvent(
+    workItem: WorkItem[PCR],
+    processingStatus: ProcessingStatus,
+    msg: String,
+    subscriber: Subscriber
+  ): ExtendedDataEvent =
+    ExtendedDataEvent(
+      auditSource = "preferences-changed-notifier",
+      auditType = "notify-subscriber-failed",
+      detail = Json.obj(
+        "preferenceChangedId" -> JsString(s"${workItem.item.preferenceChangedId}"),
+        "preferenceId"        -> JsString(s"${workItem.item.preferenceId}"),
+        "subscriber"          -> JsString(s"${subscriber.name}"),
+        "status"              -> JsString(s"$processingStatus"),
+        "error"               -> JsString(msg)
+      )
+    )
+
+  private def audit(extendedDataEvent: ExtendedDataEvent): Unit =
+    auditConnector.sendExtendedEvent(extendedDataEvent)
 }

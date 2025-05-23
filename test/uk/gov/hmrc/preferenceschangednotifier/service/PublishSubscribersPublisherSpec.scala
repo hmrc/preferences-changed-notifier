@@ -18,7 +18,7 @@ package uk.gov.hmrc.preferenceschangednotifier.service
 
 import org.bson.types.ObjectId
 import org.mockito.ArgumentMatchers
-import org.mockito.Mockito.{ reset, times, verify, when }
+import org.mockito.Mockito.{ reset, times, verify, verifyNoInteractions, when }
 import org.mockito.ArgumentMatchers.any
 import org.scalatest.{ BeforeAndAfterEach, EitherValues }
 import org.scalatest.concurrent.ScalaFutures
@@ -29,6 +29,8 @@ import play.api.http.Status.{ BAD_REQUEST, INTERNAL_SERVER_ERROR, OK, TOO_MANY_R
 import uk.gov.hmrc.http.{ HttpResponse, UpstreamErrorResponse }
 import uk.gov.hmrc.mongo.workitem.ProcessingStatus.{ Failed, PermanentlyFailed, ToDo }
 import uk.gov.hmrc.mongo.workitem.WorkItem
+import uk.gov.hmrc.play.audit.http.connector.AuditConnector
+import uk.gov.hmrc.play.audit.http.connector.AuditResult.Failure
 import uk.gov.hmrc.preferenceschangednotifier.connectors.{ EpsHodsAdapterConnector, UpdatedPrintSuppressionsConnector }
 import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat.Digital
 import uk.gov.hmrc.preferenceschangednotifier.model.{ NotifySubscriberRequest, PreferencesChangedRef }
@@ -45,11 +47,13 @@ class PublishSubscribersPublisherSpec extends AnyFreeSpec with ScalaFutures with
   var preferencesChangedService = mock[PreferencesChangedService]
   var epsConnector = mock[EpsHodsAdapterConnector]
   var upsConnector = mock[UpdatedPrintSuppressionsConnector]
+  var auditConnector = mock[AuditConnector]
   var subscribers = Seq(epsConnector, upsConnector)
 
   override def beforeEach(): Unit = {
     reset(epsConnector)
     reset(upsConnector)
+    reset(auditConnector)
     reset(preferencesChangedService)
     when(epsConnector.name).thenReturn("EpsHodsAdapter")
     when(upsConnector.name).thenReturn("UpdatedPrintSuppressions")
@@ -76,7 +80,7 @@ class PublishSubscribersPublisherSpec extends AnyFreeSpec with ScalaFutures with
   "publish subscribers publisher" - {
 
     "should complete with success for 200 OK" in {
-      val svc = new PublishSubscribersPublisher(preferencesChangedService, subscribers)
+      val svc = new PublishSubscribersPublisher(preferencesChangedService, subscribers, auditConnector)
       val req = NotifySubscriberRequest(Digital, Instant.now(), Map("nino" -> "AB112233A"), false)
 
       val workItem = createWorkItem
@@ -90,16 +94,18 @@ class PublishSubscribersPublisherSpec extends AnyFreeSpec with ScalaFutures with
       response must equal(
         Right(Result(s"Completed & deleted workitem: ${workItem.id} successfully: HttpResponse status=200"))
       )
+      verifyNoInteractions(auditConnector)
     }
 
     "should complete with retry Failure for 429 TOO_MANY_REQUESTS" in {
-      val svc = new PublishSubscribersPublisher(preferencesChangedService, subscribers)
+      val svc = new PublishSubscribersPublisher(preferencesChangedService, subscribers, auditConnector)
       val req = NotifySubscriberRequest(Digital, Instant.now(), Map("nino" -> "AB112233A"), false)
 
       when(epsConnector.notifySubscriber(any)(any, any))
         .thenReturn(Future(Left(UpstreamErrorResponse("Oops", TOO_MANY_REQUESTS, 0, Map.empty))))
       when(preferencesChangedService.completeWithStatus(any, any))
         .thenReturn(Future(true))
+      when(auditConnector.sendExtendedEvent(any)(any, any)).thenReturn(Future(Failure("Fail")))
 
       val workItem = createWorkItem
       val response = svc.execute(req, workItem).futureValue
@@ -110,16 +116,18 @@ class PublishSubscribersPublisherSpec extends AnyFreeSpec with ScalaFutures with
         )
       )
       verify(preferencesChangedService, times(1)).completeWithStatus(any, ArgumentMatchers.eq(Failed))
+      verify(auditConnector).sendExtendedEvent(any)(any, any)
     }
 
     "should complete with PermanentFailure for 429 TOO_MANY_REQUESTS if retry limit is reached" in {
-      val svc = new PublishSubscribersPublisher(preferencesChangedService, subscribers)
+      val svc = new PublishSubscribersPublisher(preferencesChangedService, subscribers, auditConnector)
       val req = NotifySubscriberRequest(Digital, Instant.now(), Map("nino" -> "AB112233A"), false)
 
       when(epsConnector.notifySubscriber(any)(any, any))
         .thenReturn(Future(Left(UpstreamErrorResponse("Oops", TOO_MANY_REQUESTS, 0, Map.empty))))
       when(preferencesChangedService.completeWithStatus(any, any))
         .thenReturn(Future(true))
+      when(auditConnector.sendExtendedEvent(any)(any, any)).thenReturn(Future(Failure("Fail")))
 
       val workItem = createWorkItem.copy(failureCount = 11)
 
@@ -133,17 +141,19 @@ class PublishSubscribersPublisherSpec extends AnyFreeSpec with ScalaFutures with
       )
 
       verify(preferencesChangedService, times(1)).completeWithStatus(any, ArgumentMatchers.eq(PermanentlyFailed))
+      verify(auditConnector).sendExtendedEvent(any)(any, any)
     }
 
     // unrecoverable for any other 4XX
     "should complete with PermanentFailure for 400 BAD_REQUEST" in {
-      val svc = new PublishSubscribersPublisher(preferencesChangedService, subscribers)
+      val svc = new PublishSubscribersPublisher(preferencesChangedService, subscribers, auditConnector)
       val req = NotifySubscriberRequest(Digital, Instant.now(), Map("nino" -> "AB112233A"), false)
 
       when(epsConnector.notifySubscriber(any)(any, any))
         .thenReturn(Future(Left(UpstreamErrorResponse("Oops", BAD_REQUEST, 0, Map.empty))))
       when(preferencesChangedService.completeWithStatus(any, any))
         .thenReturn(Future(true))
+      when(auditConnector.sendExtendedEvent(any)(any, any)).thenReturn(Future(Failure("Fail")))
 
       val workItem = createWorkItem
 
@@ -155,17 +165,19 @@ class PublishSubscribersPublisherSpec extends AnyFreeSpec with ScalaFutures with
       )
 
       verify(preferencesChangedService, times(1)).completeWithStatus(any, ArgumentMatchers.eq(PermanentlyFailed))
+      verify(auditConnector).sendExtendedEvent(any)(any, any)
     }
 
     // recoverable 5XX
     "should complete with retryable Failure for 500 INTERNAL_SERVER_ERROR" in {
-      val svc = new PublishSubscribersPublisher(preferencesChangedService, subscribers)
+      val svc = new PublishSubscribersPublisher(preferencesChangedService, subscribers, auditConnector)
       val req = NotifySubscriberRequest(Digital, Instant.now(), Map("nino" -> "AB112233A"), false)
 
       when(epsConnector.notifySubscriber(any)(any, any))
         .thenReturn(Future(Left(UpstreamErrorResponse("Oops", INTERNAL_SERVER_ERROR, 0, Map.empty))))
       when(preferencesChangedService.completeWithStatus(any, any))
         .thenReturn(Future(true))
+      when(auditConnector.sendExtendedEvent(any)(any, any)).thenReturn(Future(Failure("Fail")))
 
       val workItem = createWorkItem
 
@@ -177,6 +189,7 @@ class PublishSubscribersPublisherSpec extends AnyFreeSpec with ScalaFutures with
       )
 
       verify(preferencesChangedService, times(1)).completeWithStatus(any, ArgumentMatchers.eq(Failed))
+      verify(auditConnector).sendExtendedEvent(any)(any, any)
     }
 
   }
