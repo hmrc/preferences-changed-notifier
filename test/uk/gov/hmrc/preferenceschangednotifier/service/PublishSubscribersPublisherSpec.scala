@@ -112,7 +112,7 @@ class PublishSubscribersPublisherSpec extends AnyFreeSpec with ScalaFutures with
       response must equal(
         Left(
           s"publish to subscriber EpsHodsAdapter" +
-            s" failed, with HTTP response: [Oops], will retry. Workitem updated true"
+            s" failed returning [Oops], will retry. Workitem updated true"
         )
       )
       verify(preferencesChangedService, times(1)).completeWithStatus(any, ArgumentMatchers.eq(Failed))
@@ -129,14 +129,14 @@ class PublishSubscribersPublisherSpec extends AnyFreeSpec with ScalaFutures with
         .thenReturn(Future(true))
       when(auditConnector.sendExtendedEvent(any)(any, any)).thenReturn(Future(Failure("Fail")))
 
-      val workItem = createWorkItem.copy(failureCount = 11)
+      val workItem = createWorkItem.copy(failureCount = 10)
 
       val response = svc.execute(req, workItem).futureValue
       response must equal(
         Left(
-          s"publish to subscriber EpsHodsAdapter" +
-            s" failed 11 times, marking as permanently failed\nError: " +
-            s"uk.gov.hmrc.http.UpstreamErrorResponse: Oops. Workitem updated true"
+          s"publish to subscriber EpsHodsAdapter failed to publish workItem: [${workItem.id}]" +
+            s" 10 times, marking as permanently failed\nError: " +
+            s"Oops. Workitem updated true"
         )
       )
 
@@ -160,7 +160,7 @@ class PublishSubscribersPublisherSpec extends AnyFreeSpec with ScalaFutures with
       val response = svc.execute(req, workItem).futureValue
       response must equal(
         Left(
-          "publish to subscriber EpsHodsAdapter permanently failed returning uk.gov.hmrc.http.UpstreamErrorResponse: Oops. Workitem updated true"
+          "publish to subscriber EpsHodsAdapter permanently failed returning [Oops]. Workitem updated true"
         )
       )
 
@@ -184,7 +184,7 @@ class PublishSubscribersPublisherSpec extends AnyFreeSpec with ScalaFutures with
       val response = svc.execute(req, workItem).futureValue
       response must equal(
         Left(
-          "publish to subscriber EpsHodsAdapter failed, with HTTP response: [Oops], will retry. Workitem updated true"
+          "publish to subscriber EpsHodsAdapter failed returning [Oops], will retry. Workitem updated true"
         )
       )
 

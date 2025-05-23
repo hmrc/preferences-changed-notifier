@@ -116,7 +116,7 @@ class PublishSubscribersPublisher @Inject() (
       .completeWithStatus(workItem, processingStatus)
       .map { isOk =>
         val msg = s"updated workitem: $isOk, status: $processingStatus\n" +
-          s"Notify error, marking workitem [${workItem.id}] as Failed\nException: $ex"
+          s"Notify error, marking workitem [${workItem.id}] as Failed\nException: ${ex.getMessage}"
         audit(buildAuditEvent(workItem, processingStatus, msg, subscriber))
         Left(msg)
       }
@@ -144,14 +144,14 @@ class PublishSubscribersPublisher @Inject() (
     e: UpstreamErrorResponse
   ): Future[Either[String, Result]] = {
     val (message, processingState) =
-      if (workItem.failureCount > 10) {
+      if (workItem.failureCount > 9) {
         val msg: String = s"publish to subscriber ${subscriber.name}" +
-          s" failed ${workItem.failureCount} times, marking as permanently failed\nError: $e"
+          s" failed to publish workItem: [${workItem.id}] ${workItem.failureCount} times, marking as permanently failed\nError: ${e.getMessage}"
         logger.error(msg)
         (msg, PermanentlyFailed)
       } else {
         val msg =
-          s"publish to subscriber ${subscriber.name} failed, with HTTP response: [${e.message}], will retry"
+          s"publish to subscriber ${subscriber.name} failed returning [${e.getMessage}], will retry"
         logger.debug(msg)
         (msg, Failed)
       }
@@ -169,7 +169,7 @@ class PublishSubscribersPublisher @Inject() (
     subscriber: Subscriber,
     e: UpstreamErrorResponse
   ): Future[Either[String, Result]] = {
-    val msg = s"publish to subscriber ${subscriber.name} permanently failed returning $e"
+    val msg = s"publish to subscriber ${subscriber.name} permanently failed returning [${e.getMessage}]"
     logger.error(msg)
 
     service
@@ -180,6 +180,9 @@ class PublishSubscribersPublisher @Inject() (
       }
   }
 
+  private def failureCategory(status: ProcessingStatus): FailureCategory =
+    if (status == Failed) FailureCategory.Recoverable else FailureCategory.Unrecoverable
+
   private def buildAuditEvent(
     workItem: WorkItem[PCR],
     processingStatus: ProcessingStatus,
@@ -188,16 +191,26 @@ class PublishSubscribersPublisher @Inject() (
   ): ExtendedDataEvent =
     ExtendedDataEvent(
       auditSource = "preferences-changed-notifier",
-      auditType = "notify-subscriber-failed",
+      auditType = "NotifySubscriberFailed",
       detail = Json.obj(
         "preferenceChangedId" -> JsString(s"${workItem.item.preferenceChangedId}"),
         "preferenceId"        -> JsString(s"${workItem.item.preferenceId}"),
         "subscriber"          -> JsString(s"${subscriber.name}"),
         "status"              -> JsString(s"$processingStatus"),
-        "error"               -> JsString(msg)
+        "outcome" ->
+          Json.obj(
+            "isSuccessful"    -> false,
+            "failureCategory" -> JsString(failureCategory(processingStatus).id),
+            "failureReason"   -> JsString(msg)
+          )
       )
     )
 
   private def audit(extendedDataEvent: ExtendedDataEvent): Unit =
     auditConnector.sendExtendedEvent(extendedDataEvent)
+
+  private enum FailureCategory(val id: String) {
+    case Unrecoverable extends FailureCategory("UNRECOVERABLE")
+    case Recoverable extends FailureCategory("RECOVERABLE")
+  }
 }
