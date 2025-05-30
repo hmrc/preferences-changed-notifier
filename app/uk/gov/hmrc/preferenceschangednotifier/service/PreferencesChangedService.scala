@@ -61,7 +61,7 @@ class PreferencesChangedService @Inject() (
   def pull(retryFailedAfter: Duration): Future[Option[WorkItem[PreferencesChangedRef]]] =
     pcWorkItemRepo
       .pullOutstanding(
-        Instant.now().minus(retryFailedAfter.toSeconds, ChronoUnit.SECONDS),
+        Instant.now().minusSeconds(retryFailedAfter.toSeconds),
         Instant.now()
       )
       .recoverWith {

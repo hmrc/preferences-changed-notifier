@@ -175,7 +175,9 @@ class PublishSubscribersServiceISpec
       GuiceApplicationBuilder()
         .configure(
           "metrics.enabled"                                       -> false,
-          "preferencesChanged.retryFailedAfter"                   -> 10,
+          "preferencesChanged.retryFailedAfter"                   -> "15 minutes",
+          "preferencesChanged.rateLimit.elements"                 -> "10",
+          "preferencesChanged.rateLimit.per"                      -> "1 second",
           "microservice.services.eps-hods-adapter.host"           -> "localhost",
           "microservice.services.eps-hods-adapter.port"           -> wireMockServer.port(),
           "scheduling.PublishSubscribersJob.taskEnabled"          -> false,

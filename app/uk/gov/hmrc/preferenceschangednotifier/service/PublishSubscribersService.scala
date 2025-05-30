@@ -28,7 +28,7 @@ import uk.gov.hmrc.preferenceschangednotifier.scheduling.Result
 
 import java.util.concurrent.TimeUnit
 import javax.inject.{ Inject, Singleton }
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.{ Failure, Success, Try }
 
@@ -44,10 +44,13 @@ class PublishSubscribersService @Inject() (
   private implicit val hc: HeaderCarrier = HeaderCarrier()
 
   lazy val retryFailedAfter: Duration =
-    Duration(
-      configuration.getMillis("preferencesChanged.retryFailedAfter"),
-      TimeUnit.SECONDS
-    )
+    configuration.get[Duration]("preferencesChanged.retryFailedAfter").asInstanceOf[FiniteDuration]
+
+  private val rateConfig =
+    configuration.get[Configuration]("preferencesChanged.rateLimit")
+
+  val elements = rateConfig.get[Int]("elements")
+  val duration = rateConfig.get[Duration]("per").asInstanceOf[FiniteDuration]
 
   /** Called by scheduler to find items for workload processing. Workloads will call any registered subscribers to
     * notify them of a changed optin/optout value.
@@ -59,6 +62,7 @@ class PublishSubscribersService @Inject() (
           .pull(retryFailedAfter)
           .map(_.map(workItem => (NotUsed, workItem)))
       )
+      .throttle(elements, per = duration)
       .runFoldAsync(Result(""))((acc, wi) => processWorkItem(acc, wi))
       .recover { case ex =>
         logger.error(s"Recovery error $ex")
