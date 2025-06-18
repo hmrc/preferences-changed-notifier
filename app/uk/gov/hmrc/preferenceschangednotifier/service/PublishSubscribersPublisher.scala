@@ -17,7 +17,7 @@
 package uk.gov.hmrc.preferenceschangednotifier.service
 
 import play.api.Logging
-import play.api.http.Status.TOO_MANY_REQUESTS
+import play.api.http.Status.{ FORBIDDEN, TOO_MANY_REQUESTS, UNAUTHORIZED }
 import play.api.libs.json.{ JsObject, JsString, Json }
 import uk.gov.hmrc.http.{ HeaderCarrier, HttpResponse, UpstreamErrorResponse }
 import uk.gov.hmrc.http.UpstreamErrorResponse.{ Upstream4xxResponse, Upstream5xxResponse }
@@ -45,6 +45,8 @@ class PublishSubscribersPublisher @Inject() (
 
   private type PCR = PreferencesChangedRef
 
+  private val retryableStatuses = Set(TOO_MANY_REQUESTS, UNAUTHORIZED, FORBIDDEN)
+
   def execute(
     req: NotifySubscriberRequest,
     workItem: WorkItem[PCR]
@@ -53,6 +55,8 @@ class PublishSubscribersPublisher @Inject() (
       case None             => missingSubscriber(workItem)
       case Some(subscriber) => processNotification(req, subscriber, workItem)
     }
+
+  private def retryable(status: Int) = retryableStatuses.contains(status)
 
   private def processNotification(
     req: NotifySubscriberRequest,
@@ -77,8 +81,8 @@ class PublishSubscribersPublisher @Inject() (
               )
             }
 
-        // Treat 429 as recoverable - mean work-item will be retried
-        case Left(e @ UpstreamErrorResponse(message, TOO_MANY_REQUESTS, _, _)) =>
+        // Some 4XX statuses are recoverable - mean work-item will be retried
+        case Left(e @ UpstreamErrorResponse(message, status, _, _)) if retryable(status) =>
           processRecoverable(workItem, subscriber, e)
 
         // All other 4XX responses cannot be retried, so will be marked as permanently failed
