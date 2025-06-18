@@ -30,17 +30,19 @@ import org.scalatest.EitherValues
 import org.scalatestplus.play.PlaySpec
 import play.api.Application
 import play.api.http.Status.OK
+import play.api.inject.ApplicationLifecycle
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.Format
+import uk.gov.hmrc.mongo.lock.LockRepository
 import uk.gov.hmrc.mongo.play.json.formats.MongoJavatimeFormats
 import uk.gov.hmrc.mongo.test.MongoSupport
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.preferenceschangednotifier.WireMockUtil
+import uk.gov.hmrc.preferenceschangednotifier.config.PublishSubscribersServiceConfig
 import uk.gov.hmrc.preferenceschangednotifier.connectors.{ EpsHodsAdapterConnector, Subscriber, UpdatedPrintSuppressionsConnector }
 import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat.Paper
-import uk.gov.hmrc.preferenceschangednotifier.model.{ PreferencesChanged, PreferencesChangedRef }
+import uk.gov.hmrc.preferenceschangednotifier.model.{ PreferencesChanged, PreferencesChangedRef, Result }
 import uk.gov.hmrc.preferenceschangednotifier.repository.{ PreferencesChangedRepository, PreferencesChangedWorkItemRepository }
-import uk.gov.hmrc.preferenceschangednotifier.scheduling.Result
 
 import java.time.Instant
 import java.util.UUID
@@ -61,7 +63,7 @@ class PublishSubscribersServiceMissingEntityISpec
 
       val docCount = pcwiRepo.collection.countDocuments().toFuture().futureValue
 
-      val result: Result = service.execute.futureValue
+      val result: Result = service.execute().futureValue
       docCount must be(1)
 
       result.message must be("")
@@ -84,7 +86,7 @@ class PublishSubscribersServiceMissingEntityISpec
       // there are now 2 workitems and a single valid PC document
       val docCount = pcwiRepo.collection.countDocuments().toFuture().futureValue
 
-      val result: Result = service.execute.futureValue
+      val result: Result = service.execute().futureValue
       docCount must be(2)
 
       result.message must include(
@@ -130,6 +132,10 @@ class PublishSubscribersServiceMissingEntityISpec
     val epsSubscriber: Subscriber = app.injector.instanceOf[EpsHodsAdapterConnector]
     val upsSubscriber: Subscriber = app.injector.instanceOf[UpdatedPrintSuppressionsConnector]
 
+    private val lockRepository = app.injector.instanceOf[LockRepository]
+    private val applicationLifecycle = app.injector.instanceOf[ApplicationLifecycle]
+    private val config = app.injector.instanceOf[PublishSubscribersServiceConfig]
+
     val service = new PublishSubscribersService(
       new PreferencesChangedService(
         pcRepo,
@@ -138,7 +144,9 @@ class PublishSubscribersServiceMissingEntityISpec
       ),
       publisher,
       auditConnector,
-      app.configuration
+      lockRepository,
+      applicationLifecycle,
+      config
     )
 
     pcRepo.collection.drop().toFuture().futureValue

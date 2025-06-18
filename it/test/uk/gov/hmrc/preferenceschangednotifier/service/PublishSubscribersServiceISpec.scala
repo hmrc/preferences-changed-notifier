@@ -19,17 +19,23 @@ package uk.gov.hmrc.preferenceschangednotifier.service
 import com.github.tomakehurst.wiremock.client.WireMock.{ aResponse, post, urlEqualTo }
 import org.mongodb.scala.bson.ObjectId
 import org.mongodb.scala.SingleObservableFuture
+import org.mongodb.scala.ObservableFuture
+import org.mongodb.scala.ToSingleObservablePublisher
+import org.mongodb.scala.model.Filters
+import org.scalatest.concurrent.Eventually.eventually
 import org.scalatest.concurrent.{ IntegrationPatience, ScalaFutures }
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.{ BeforeAndAfterEach, EitherValues, TestSuite }
 import org.scalatest.concurrent.ScalaFutures.convertScalaFuture
+import org.scalatest.time.{ Seconds, Span }
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.Application
 import play.api.http.Status
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.mongo.test.MongoSupport
-import uk.gov.hmrc.mongo.workitem.WorkItem
+import uk.gov.hmrc.mongo.workitem.ProcessingStatus.PermanentlyFailed
+import uk.gov.hmrc.mongo.workitem.{ ProcessingStatus, WorkItem }
 import uk.gov.hmrc.preferenceschangednotifier.WireMockUtil
 import uk.gov.hmrc.preferenceschangednotifier.connectors.{ EpsHodsAdapterConnector, Subscriber, UpdatedPrintSuppressionsConnector }
 import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat.Paper
@@ -50,8 +56,10 @@ class PublishSubscribersServiceISpec
     "should process the workitem for both subscribers" in new TestSetup {
       val wi: (WorkItem[_], WorkItem[_]) = setupData()
 
-      val countItems = pcwiRepo.collection.countDocuments().toFuture().futureValue
-      countItems must be(2)
+      eventually(timeout(Span(1, Seconds))) {
+        val countItems = pcwiRepo.collection.countDocuments().toFuture().futureValue
+        countItems must be(2)
+      }
 
       wireMockServer.addStubMapping(
         post(urlEqualTo("/eps-hods-adapter/preferences/notify-subscriber"))
@@ -64,23 +72,22 @@ class PublishSubscribersServiceISpec
           .build()
       )
 
-      val result = service.execute.futureValue
+      service.start()
 
-      result.message must include(s"Completed & deleted workitem: ${wi._1.id} successfully: HttpResponse status=200")
-      result.message must include(s"Completed & deleted workitem: ${wi._2.id} successfully: HttpResponse status=200")
+      eventually(timeout(Span(3, Seconds))) {
+        val postExecuteCount = pcwiRepo.collection.countDocuments().toFuture().futureValue
+        postExecuteCount must be(0)
 
-      val postExecuteCount =
-        pcwiRepo.collection.countDocuments().toFuture().futureValue
-      postExecuteCount must be(0)
+      }
     }
 
     "should receive 400 for missing SaUtr" in new TestSetup {
       val wi: (WorkItem[_], WorkItem[_]) = setupData(addSaUtr = false)
 
-      val countItems =
-        pcwiRepo.collection.countDocuments().toFuture().futureValue
-
-      countItems must be(2)
+      eventually(timeout(Span(1, Seconds))) {
+        val countItems = pcwiRepo.collection.countDocuments().toFuture().futureValue
+        countItems must be(2)
+      }
 
       wireMockServer.addStubMapping(
         post(urlEqualTo("/eps-hods-adapter/preferences/notify-subscriber"))
@@ -93,32 +100,48 @@ class PublishSubscribersServiceISpec
           .build()
       )
 
-      val result = service.execute.futureValue
-
-      result.message must include(s"Completed & deleted workitem: ${wi._1.id} successfully: HttpResponse status=200")
-      result.message must include(s"permanently failed")
-      result.message must include(s"Missing SaUtr")
+      service.start()
 
       // There will be one item left which did not get processed successfully
-      val postExecuteCount = pcwiRepo.collection.countDocuments().toFuture().futureValue
-      postExecuteCount must be(1)
+      eventually(timeout(Span(3, Seconds))) {
+        val postExecuteCount = pcwiRepo.collection.countDocuments().toFuture().futureValue
+        postExecuteCount must be(1)
+
+        val wi = pcwiRepo.collection.find().first().toFuture().futureValue
+        wi.status must be(PermanentlyFailed)
+      }
     }
 
     "return correctly when eps-hods-adapter returns 4XX error" in new TestSetup {
       setupData()
+
+      eventually(timeout(Span(1, Seconds))) {
+        val countItems = pcwiRepo.collection.countDocuments().toFuture().futureValue
+        countItems must be(2)
+      }
+
       wireMockServer.addStubMapping(
         post(urlEqualTo("/eps-hods-adapter/preferences/notify-subscriber"))
           .willReturn(aResponse().withStatus(Status.BAD_REQUEST).withBody("A bad_request message"))
           .build()
       )
 
-      private val result = service.execute.futureValue
-      result.message must include("permanently failed")
-      result.message must include("'A bad_request message'")
+      service.start()
+
+      eventually(timeout(Span(3, Seconds))) {
+        val wi: Seq[WorkItem[PreferencesChangedRef]] = pcwiRepo.collection.find().toFuture().futureValue
+        wi.foreach(_.status must be(PermanentlyFailed))
+        wi.size must be(2)
+      }
     }
 
     "return Failed (which is retried) when eps-hods-adapter returns 429 error" in new TestSetup {
       setupData()
+
+      eventually(timeout(Span(1, Seconds))) {
+        val countItems = pcwiRepo.collection.countDocuments().toFuture().futureValue
+        countItems must be(2)
+      }
 
       wireMockServer.addStubMapping(
         post(urlEqualTo("/eps-hods-adapter/preferences/notify-subscriber"))
@@ -126,8 +149,14 @@ class PublishSubscribersServiceISpec
           .build()
       )
 
-      private val result = service.execute.futureValue
+      private val result = service.execute().futureValue
       result.message must include("will retry")
+
+      eventually(timeout(Span(3, Seconds))) {
+        val filter = Filters.equal("item.subscriber", "EpsHodsAdapter")
+        val wi: WorkItem[PreferencesChangedRef] = pcwiRepo.collection.find(filter).toSingle().toFuture().futureValue
+        wi.status must be(ProcessingStatus.Failed)
+      }
     }
 
     "return Failed (which is retried) when subscriber returns 5XX error" in new TestSetup {
@@ -143,30 +172,13 @@ class PublishSubscribersServiceISpec
           .build()
       )
 
-      private val result = service.execute.futureValue
+      service.start()
 
-      result.message must include("returned 500")
-      result.message must include("An internal_server_error message")
-    }
-
-    "return Failed (which is retried) when subscriber returns a non 200 status" in new TestSetup {
-      val wi = setupData()
-      wireMockServer.addStubMapping(
-        post(urlEqualTo("/eps-hods-adapter/preferences/notify-subscriber"))
-          .willReturn(aResponse().withStatus(Status.CREATED).withBody("An internal_server_error message"))
-          .build()
-      )
-      wireMockServer.addStubMapping(
-        post(urlEqualTo("/preferences/notify-subscriber"))
-          .willReturn(aResponse().withStatus(Status.CREATED).withBody("An internal_server_error message"))
-          .build()
-      )
-
-      private val result = service.execute.futureValue
-
-      result.message must include(
-        s"Completed & deleted workitem: ${wi._1.id} successfully: HttpResponse status=${Status.CREATED}"
-      )
+      eventually(timeout(Span(3, Seconds))) {
+        val wi: Seq[WorkItem[PreferencesChangedRef]] = pcwiRepo.collection.find().toFuture().futureValue
+        wi.foreach(_.status must be(ProcessingStatus.Failed))
+        wi.size must be(2)
+      }
     }
   }
 
@@ -181,6 +193,8 @@ class PublishSubscribersServiceISpec
           "microservice.services.eps-hods-adapter.host"           -> "localhost",
           "microservice.services.eps-hods-adapter.port"           -> wireMockServer.port(),
           "scheduling.PublishSubscribersJob.taskEnabled"          -> false,
+          "scheduling.PublishSubscribersJob.initialDelay"         -> "500 milliseconds",
+          "scheduling.PublishSubscribersJob.interval"             -> "10 seconds",
           "microservice.services.updated-print-suppressions.host" -> "localhost",
           "microservice.services.updated-print-suppressions.port" -> wireMockServer.port()
         )

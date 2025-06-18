@@ -26,8 +26,7 @@ import uk.gov.hmrc.mongo.workitem.{ ProcessingStatus, WorkItem }
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.play.audit.model.ExtendedDataEvent
 import uk.gov.hmrc.preferenceschangednotifier.connectors.Subscriber
-import uk.gov.hmrc.preferenceschangednotifier.model.{ NotifySubscriberRequest, PreferencesChangedRef }
-import uk.gov.hmrc.preferenceschangednotifier.scheduling.Result
+import uk.gov.hmrc.preferenceschangednotifier.model.{ NotifySubscriberRequest, PreferencesChangedRef, Result }
 
 import java.util.UUID
 import javax.inject.{ Inject, Singleton }
@@ -54,7 +53,7 @@ class PublishSubscribersPublisher @Inject() (
       case Some(subscriber) => processNotification(req, subscriber, workItem)
     }
 
-  private def processNotification(
+  def processNotification(
     req: NotifySubscriberRequest,
     subscriber: Subscriber,
     workItem: WorkItem[PCR]

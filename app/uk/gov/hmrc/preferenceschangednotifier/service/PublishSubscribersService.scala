@@ -16,19 +16,26 @@
 
 package uk.gov.hmrc.preferenceschangednotifier.service
 
-import org.apache.pekko.NotUsed
-import org.apache.pekko.stream.Materializer
-import org.apache.pekko.stream.scaladsl.Source
+import org.apache.pekko.{ Done, NotUsed }
+import org.apache.pekko.stream.{ KillSwitch, KillSwitches, Materializer }
+import org.apache.pekko.stream.scaladsl.{ Keep, Sink, Source }
+import org.mongodb.scala.MongoCollection
+import org.mongodb.scala.bson.BsonDocument
+import org.mongodb.scala.bson.conversions.Bson
+import org.mongodb.scala.model.Aggregates
+import play.api.inject.ApplicationLifecycle
 import play.api.{ Configuration, Logging }
 import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.mongo.lock.{ LockRepository, LockService }
 import uk.gov.hmrc.mongo.workitem.WorkItem
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
-import uk.gov.hmrc.preferenceschangednotifier.model.{ NotifySubscriberRequest, PreferencesChanged, PreferencesChangedRef }
-import uk.gov.hmrc.preferenceschangednotifier.scheduling.Result
+import uk.gov.hmrc.preferenceschangednotifier.config.PublishSubscribersServiceConfig
+import uk.gov.hmrc.preferenceschangednotifier.model.{ NotifySubscriberRequest, PreferencesChanged, PreferencesChangedRef, Result }
 
+import java.time.Instant
 import java.util.concurrent.TimeUnit
 import javax.inject.{ Inject, Singleton }
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.{ Failure, Success, Try }
 
@@ -37,51 +44,136 @@ class PublishSubscribersService @Inject() (
   service: PreferencesChangedService,
   publisher: PublishSubscribersPublisher,
   auditConnector: AuditConnector,
-  configuration: Configuration
+  lockRepo: LockRepository,
+  lifecycle: ApplicationLifecycle, // Play's lifecycle hook
+  config: PublishSubscribersServiceConfig
 )(implicit ec: ExecutionContext, mat: Materializer)
-    extends Logging {
+    extends Logging with LockService {
 
+//  private val name = "PublishSubscribersJob"
   private implicit val hc: HeaderCarrier = HeaderCarrier()
+  private var killSwitch: Option[KillSwitch] = None
 
-  lazy val retryFailedAfter: Duration =
-    configuration.get[Duration]("preferencesChanged.retryFailedAfter").asInstanceOf[FiniteDuration]
+//  private lazy val initialDelay: FiniteDuration =
+//    configuration
+//      .get[Duration](s"scheduling.$name.initialDelay")
+//      .toMillis
+//      .milliseconds
+//
+//  private lazy val interval: FiniteDuration =
+//    configuration
+//      .get[Duration](s"scheduling.$name.interval")
+//      .toMillis
+//      .milliseconds
+//
+//  private lazy val retryFailedAfter: Duration =
+//    configuration.get[Duration]("preferencesChanged.retryFailedAfter").asInstanceOf[FiniteDuration]
+//
+//  private val rateConfig =
+//    configuration.get[Configuration]("preferencesChanged.rateLimit")
+//
+//  private val elements = rateConfig.get[Int]("elements")
+//  private val duration = rateConfig.get[Duration]("per").asInstanceOf[FiniteDuration]
+//
+//  private lazy val lockDuration: Option[FiniteDuration] =
+//    configuration
+//      .getOptional[Duration](s"scheduling.$name.lockDuration")
+//      .flatMap(duration => Some(duration.toMillis.milliseconds))
+//
+//  private val releaseLockAfter: Duration = lockDuration.getOrElse(Duration("60 seconds"))
+//
+//  private val taskEnabled = configuration.get[Boolean]("scheduling.PublishSubscribersJob.taskEnabled")
 
-  private val rateConfig =
-    configuration.get[Configuration]("preferencesChanged.rateLimit")
+  override val lockRepository: LockRepository = lockRepo
+  override val lockId: String = s"${config.name}-scheduled-job-lock"
+  override val ttl: Duration = config.releaseLockAfter
 
-  val elements = rateConfig.get[Int]("elements")
-  val duration = rateConfig.get[Duration]("per").asInstanceOf[FiniteDuration]
+  // Only run the stream if enabled in config
+  if (config.taskEnabled) {
+    start()
+  }
 
-  /** Called by scheduler to find items for workload processing. Workloads will call any registered subscribers to
-    * notify them of a changed optin/optout value.
-    */
-  def execute: Future[Result] =
+  // Entrypoint
+  def start(): Unit = {
+    logger.warn(
+      s"Stream starting: initialDelay: ${config.initialDelay}, interval: ${config.interval}, lock-ttl: $ttl, " +
+        s"retryFailedAfter: ${config.retryFailedAfter}, rate-limit: [elements: ${config.elements}, per: ${config.duration}]"
+    )
+
+    val (killSwitch, streamDone) =
+      // Tick source, generates a Unit element to start execution periodically
+      Source
+        .tick(config.initialDelay, config.interval, tick = ())
+        .mapAsync(1)(_ =>
+          logger.debug(s"-> Tick received at ${Instant.now()}")
+          executeInLock()
+        )
+        .viaMat(KillSwitches.single)(Keep.right)
+        .toMat(Sink.ignore)(Keep.both)
+        .run()
+    // Run forever
+
+    this.killSwitch = Some(killSwitch)
+
+    // Register cleanup on shutdown
+    lifecycle.addStopHook { () =>
+      logger.warn("Shutting down publish subscribers stream...")
+      killSwitch.shutdown() // Terminate the stream gracefully
+      Future.successful(())
+    }
+  }
+
+  // Attempt to acquire lock and run the body
+  def executeInLock(): Future[Unit] =
+    // Acquire a lock
+    withLock {
+      logger.debug(s"Lock acquired, calling execute() at ${Instant.now()}")
+      // Execute this body when lock successfully acquired
+      execute()
+    }
+      .map {
+        case Some(result) =>
+          logger.debug(s"Lock processing completed at ${Instant.now()}")
+          logger.info(s"Successfully processed work under lock: $result")
+        case None =>
+          logger.info("Lock held by another instance; skipping")
+      }
+      .recover { case ex => logger.error(s"Lock acquisition failed: $ex") }
+
+  // Batch processing, streams one workitem at a time
+  def execute(): Future[Result] =
+    // Generate a source by attempting to get a workitem
     Source
-      .unfoldAsync[NotUsed, WorkItem[PreferencesChangedRef]](NotUsed)(_ =>
+      .unfoldAsync(())(_ =>
+        // Attempt to fetch a workitem one at a time.
+        // If pull returns None, stream will close.
         service
-          .pull(retryFailedAfter)
-          .map(_.map(workItem => (NotUsed, workItem)))
+          .pull(config.retryFailedAfter)
+          .map(_.map(wi => ((), wi)))
       )
-      .throttle(elements, per = duration)
-      .runFoldAsync(Result(""))((acc, wi) => processWorkItem(acc, wi))
+      // Apply rate limiting for downstream processing
+      .throttle(config.elements, per = config.duration)
+      .runFoldAsync(Result()) { (acc, item) =>
+        processWorkItem(acc, item).map(res => Result(res.message))
+      }
       .recover { case ex =>
         logger.error(s"Recovery error $ex")
         Result(ex.getMessage)
       }
 
   private def processWorkItem(acc: Result, workItem: WorkItem[PreferencesChangedRef]): Future[Result] = {
-    logger.debug(s"processing workitem: $workItem")
+    logger.debug(s"Processing workitem: $workItem")
 
     Try {
       service
         .find(workItem.item.preferenceChangedId)
         .flatMap {
           case Right(pc) =>
-            val res = execute(pc, workItem)
-            res.map(r => Result(s"${r.message}\n${acc.message}"))
+            publish(pc, workItem).map(r => Result(s"${r.message}\n${acc.message}"))
           case Left(msg) =>
+            logger.error(s"Failed to find preferencesChanged document: $msg")
             audit(workItem, msg)
-            Future.successful(Result(s"$msg ${acc.message}"))
+            Future.successful(Result(s"> $msg ${acc.message}"))
         }
     } match {
       case Success(value) => value
@@ -90,19 +182,22 @@ class PublishSubscribersService @Inject() (
     }
   }
 
-  private def execute(pc: PreferencesChanged, workItem: WorkItem[PreferencesChangedRef]): Future[Result] =
+  // Send a notification to the systems that are registered.
+  // PreferencesChangedRef.subscriber determines system to send request to.
+  private def publish(pc: PreferencesChanged, workItem: WorkItem[PreferencesChangedRef]): Future[Result] =
     publisher
       .execute(NotifySubscriberRequest(pc), workItem)
       .map {
         case Right(result) =>
+          logger.info(s"Publish completed: $result")
           result
         case Left(msg) =>
+          logger.error(s"Publish to subscriber ${workItem.item.subscriber} failed: $msg")
           audit(pc, msg)
           Result(msg)
       }
 
-  private def audit(pc: PreferencesChanged, msg: String): Unit = {
-    logger.error(s"Failed to notify subscriber: $msg")
+  private def audit(pc: PreferencesChanged, msg: String): Unit =
     auditConnector.sendExplicitAudit(
       auditType = "notify-subscriber-error",
       detail = Map(
@@ -112,10 +207,8 @@ class PublishSubscribersService @Inject() (
         "error"        -> msg
       )
     )
-  }
 
-  private def audit(workItem: WorkItem[PreferencesChangedRef], msg: String): Unit = {
-    logger.error(s"Failed to find preferencesChanged document: $msg")
+  private def audit(workItem: WorkItem[PreferencesChangedRef], msg: String): Unit =
     auditConnector.sendExplicitAudit(
       auditType = "notify-subscriber-error",
       detail = Map(
@@ -126,5 +219,4 @@ class PublishSubscribersService @Inject() (
         "error"               -> msg
       )
     )
-  }
 }
