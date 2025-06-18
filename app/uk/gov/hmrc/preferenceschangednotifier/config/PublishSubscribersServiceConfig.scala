@@ -20,7 +20,6 @@ import play.api.Configuration
 import java.util.concurrent.TimeUnit
 import javax.inject.{ Inject, Singleton }
 import scala.concurrent.duration.*
-import javax.inject.{ Inject, Singleton }
 
 @Singleton
 class PublishSubscribersServiceConfig @Inject() (configuration: Configuration) {

@@ -50,39 +50,8 @@ class PublishSubscribersService @Inject() (
 )(implicit ec: ExecutionContext, mat: Materializer)
     extends Logging with LockService {
 
-//  private val name = "PublishSubscribersJob"
   private implicit val hc: HeaderCarrier = HeaderCarrier()
   private var killSwitch: Option[KillSwitch] = None
-
-//  private lazy val initialDelay: FiniteDuration =
-//    configuration
-//      .get[Duration](s"scheduling.$name.initialDelay")
-//      .toMillis
-//      .milliseconds
-//
-//  private lazy val interval: FiniteDuration =
-//    configuration
-//      .get[Duration](s"scheduling.$name.interval")
-//      .toMillis
-//      .milliseconds
-//
-//  private lazy val retryFailedAfter: Duration =
-//    configuration.get[Duration]("preferencesChanged.retryFailedAfter").asInstanceOf[FiniteDuration]
-//
-//  private val rateConfig =
-//    configuration.get[Configuration]("preferencesChanged.rateLimit")
-//
-//  private val elements = rateConfig.get[Int]("elements")
-//  private val duration = rateConfig.get[Duration]("per").asInstanceOf[FiniteDuration]
-//
-//  private lazy val lockDuration: Option[FiniteDuration] =
-//    configuration
-//      .getOptional[Duration](s"scheduling.$name.lockDuration")
-//      .flatMap(duration => Some(duration.toMillis.milliseconds))
-//
-//  private val releaseLockAfter: Duration = lockDuration.getOrElse(Duration("60 seconds"))
-//
-//  private val taskEnabled = configuration.get[Boolean]("scheduling.PublishSubscribersJob.taskEnabled")
 
   override val lockRepository: LockRepository = lockRepo
   override val lockId: String = s"${config.name}-scheduled-job-lock"
