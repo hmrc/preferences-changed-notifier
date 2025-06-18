@@ -25,7 +25,8 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers.{ equal, must }
 import org.scalatestplus.mockito.MockitoSugar.mock
-import play.api.http.Status.{ BAD_REQUEST, INTERNAL_SERVER_ERROR, OK, TOO_MANY_REQUESTS }
+import org.scalatestplus.scalacheck.*
+import play.api.http.Status.{ BAD_REQUEST, FORBIDDEN, INTERNAL_SERVER_ERROR, OK, TOO_MANY_REQUESTS, UNAUTHORIZED }
 import uk.gov.hmrc.http.{ HttpResponse, UpstreamErrorResponse }
 import uk.gov.hmrc.mongo.workitem.ProcessingStatus.{ Failed, PermanentlyFailed, ToDo }
 import uk.gov.hmrc.mongo.workitem.WorkItem
@@ -41,7 +42,8 @@ import java.util.UUID
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class PublishSubscribersPublisherSpec extends AnyFreeSpec with ScalaFutures with BeforeAndAfterEach with EitherValues {
+class PublishSubscribersPublisherSpec
+    extends AnyFreeSpec with ScalaFutures with BeforeAndAfterEach with EitherValues with ScalaCheckPropertyChecks {
   spec =>
 
   var preferencesChangedService = mock[PreferencesChangedService]
@@ -97,29 +99,36 @@ class PublishSubscribersPublisherSpec extends AnyFreeSpec with ScalaFutures with
       verifyNoInteractions(auditConnector)
     }
 
-    "should complete with retry Failure for 429 TOO_MANY_REQUESTS" in {
-      val svc = new PublishSubscribersPublisher(preferencesChangedService, subscribers, auditConnector)
-      val req = NotifySubscriberRequest(Digital, Instant.now(), Map("nino" -> "AB112233A"), false)
+    "should complete with retry Failure for each retryable 4XX status" in {
+      val retryableCombos =
+        Table("status", TOO_MANY_REQUESTS, UNAUTHORIZED, FORBIDDEN)
 
-      when(epsConnector.notifySubscriber(any)(any, any))
-        .thenReturn(Future(Left(UpstreamErrorResponse("Oops", TOO_MANY_REQUESTS, 0, Map.empty))))
-      when(preferencesChangedService.completeWithStatus(any, any))
-        .thenReturn(Future(true))
-      when(auditConnector.sendExtendedEvent(any)(any, any)).thenReturn(Future(Failure("Fail")))
+      forAll(retryableCombos) { (status: Int) =>
+        reset(preferencesChangedService, auditConnector)
 
-      val workItem = createWorkItem
-      val response = svc.execute(req, workItem).futureValue
-      response must equal(
-        Left(
-          s"publish to subscriber EpsHodsAdapter" +
-            s" failed returning [Oops], will retry. Workitem updated true"
+        val svc = new PublishSubscribersPublisher(preferencesChangedService, subscribers, auditConnector)
+        val req = NotifySubscriberRequest(Digital, Instant.now(), Map("nino" -> "AB112233A"), false)
+
+        when(epsConnector.notifySubscriber(any)(any, any))
+          .thenReturn(Future(Left(UpstreamErrorResponse("Oops", TOO_MANY_REQUESTS, 0, Map.empty))))
+        when(preferencesChangedService.completeWithStatus(any, any))
+          .thenReturn(Future(true))
+        when(auditConnector.sendExtendedEvent(any)(any, any)).thenReturn(Future(Failure("Fail")))
+
+        val workItem = createWorkItem
+        val response = svc.execute(req, workItem).futureValue
+        response must equal(
+          Left(
+            s"publish to subscriber EpsHodsAdapter" +
+              s" failed returning [Oops], will retry. Workitem updated true"
+          )
         )
-      )
-      verify(preferencesChangedService, times(1)).completeWithStatus(any, ArgumentMatchers.eq(Failed))
-      verify(auditConnector).sendExtendedEvent(any)(any, any)
+        verify(preferencesChangedService, times(1)).completeWithStatus(any, ArgumentMatchers.eq(Failed))
+        verify(auditConnector).sendExtendedEvent(any)(any, any)
+      }
     }
 
-    "should complete with PermanentFailure for 429 TOO_MANY_REQUESTS if retry limit is reached" in {
+    "should complete with Failure for 429 TOO_MANY_REQUESTS if retry limit is reached" in {
       val svc = new PublishSubscribersPublisher(preferencesChangedService, subscribers, auditConnector)
       val req = NotifySubscriberRequest(Digital, Instant.now(), Map("nino" -> "AB112233A"), false)
 
