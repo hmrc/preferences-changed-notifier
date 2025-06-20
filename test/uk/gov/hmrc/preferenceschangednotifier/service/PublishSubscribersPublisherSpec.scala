@@ -26,7 +26,7 @@ import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers.{ equal, must }
 import org.scalatestplus.mockito.MockitoSugar.mock
 import org.scalatestplus.scalacheck.*
-import play.api.http.Status.{ BAD_REQUEST, FORBIDDEN, INTERNAL_SERVER_ERROR, OK, TOO_MANY_REQUESTS, UNAUTHORIZED }
+import play.api.http.Status.{ BAD_REQUEST, CONFLICT, FORBIDDEN, INTERNAL_SERVER_ERROR, OK, TOO_MANY_REQUESTS, UNAUTHORIZED }
 import uk.gov.hmrc.http.{ HttpResponse, UpstreamErrorResponse }
 import uk.gov.hmrc.mongo.workitem.ProcessingStatus.{ Failed, PermanentlyFailed, ToDo }
 import uk.gov.hmrc.mongo.workitem.WorkItem
@@ -34,8 +34,7 @@ import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.play.audit.http.connector.AuditResult.Failure
 import uk.gov.hmrc.preferenceschangednotifier.connectors.{ EpsHodsAdapterConnector, UpdatedPrintSuppressionsConnector }
 import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat.Digital
-import uk.gov.hmrc.preferenceschangednotifier.model.{ NotifySubscriberRequest, PreferencesChangedRef }
-import uk.gov.hmrc.preferenceschangednotifier.scheduling.Result
+import uk.gov.hmrc.preferenceschangednotifier.model.{ NotifySubscriberRequest, PreferencesChangedRef, Result }
 
 import java.time.Instant
 import java.util.UUID
@@ -101,7 +100,7 @@ class PublishSubscribersPublisherSpec
 
     "should complete with retry Failure for each retryable 4XX status" in {
       val retryableCombos =
-        Table("status", TOO_MANY_REQUESTS, UNAUTHORIZED, FORBIDDEN)
+        Table("status", CONFLICT, TOO_MANY_REQUESTS, UNAUTHORIZED, FORBIDDEN)
 
       forAll(retryableCombos) { (status: Int) =>
         reset(preferencesChangedService, auditConnector)
@@ -119,7 +118,7 @@ class PublishSubscribersPublisherSpec
         val response = svc.execute(req, workItem).futureValue
         response must equal(
           Left(
-            s"publish to subscriber EpsHodsAdapter" +
+            s"Publish to subscriber EpsHodsAdapter" +
               s" failed returning [Oops], will retry. Workitem updated true"
           )
         )
@@ -143,7 +142,7 @@ class PublishSubscribersPublisherSpec
       val response = svc.execute(req, workItem).futureValue
       response must equal(
         Left(
-          s"publish to subscriber EpsHodsAdapter failed to publish workItem: [${workItem.id}]" +
+          s"Publish to subscriber EpsHodsAdapter failed to publish workItem: [${workItem.id}]" +
             s" 10 times, marking as permanently failed\nError: " +
             s"Oops. Workitem updated true"
         )
@@ -193,7 +192,7 @@ class PublishSubscribersPublisherSpec
       val response = svc.execute(req, workItem).futureValue
       response must equal(
         Left(
-          "publish to subscriber EpsHodsAdapter failed returning [Oops], will retry. Workitem updated true"
+          "Publish to subscriber EpsHodsAdapter failed returning [Oops], will retry. Workitem updated true"
         )
       )
 

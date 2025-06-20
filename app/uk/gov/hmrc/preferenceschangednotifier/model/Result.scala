@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.preferenceschangednotifier.scheduling
+package uk.gov.hmrc.preferenceschangednotifier.model
 
-case class ScheduledJobs(jobs: Iterable[ScheduledJob])
+case class Result(message: String = "")
