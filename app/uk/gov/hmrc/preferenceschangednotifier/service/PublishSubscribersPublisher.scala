@@ -17,7 +17,7 @@
 package uk.gov.hmrc.preferenceschangednotifier.service
 
 import play.api.Logging
-import play.api.http.Status.{ FORBIDDEN, TOO_MANY_REQUESTS, UNAUTHORIZED }
+import play.api.http.Status.{ CONFLICT, FORBIDDEN, TOO_MANY_REQUESTS, UNAUTHORIZED }
 import play.api.libs.json.{ JsObject, JsString, Json }
 import uk.gov.hmrc.http.{ HeaderCarrier, HttpResponse, UpstreamErrorResponse }
 import uk.gov.hmrc.http.UpstreamErrorResponse.{ Upstream4xxResponse, Upstream5xxResponse }
@@ -45,7 +45,7 @@ class PublishSubscribersPublisher @Inject() (
 
   private type PCR = PreferencesChangedRef
 
-  private val retryableStatuses = Set(TOO_MANY_REQUESTS, UNAUTHORIZED, FORBIDDEN)
+  private val retryableStatuses = Set(CONFLICT, TOO_MANY_REQUESTS, UNAUTHORIZED, FORBIDDEN)
 
   def execute(
     req: NotifySubscriberRequest,
@@ -149,14 +149,12 @@ class PublishSubscribersPublisher @Inject() (
   ): Future[Either[String, Result]] = {
     val (message, processingState) =
       if (workItem.failureCount > 9) {
-        val msg: String = s"publish to subscriber ${subscriber.name}" +
+        val msg: String = s"Publish to subscriber ${subscriber.name}" +
           s" failed to publish workItem: [${workItem.id}] ${workItem.failureCount} times, marking as permanently failed\nError: ${e.getMessage}"
-        logger.error(msg)
         (msg, PermanentlyFailed)
       } else {
         val msg =
-          s"publish to subscriber ${subscriber.name} failed returning [${e.getMessage}], will retry"
-        logger.debug(msg)
+          s"Publish to subscriber ${subscriber.name} failed returning [${e.getMessage}], will retry"
         (msg, Failed)
       }
 
@@ -174,7 +172,6 @@ class PublishSubscribersPublisher @Inject() (
     e: UpstreamErrorResponse
   ): Future[Either[String, Result]] = {
     val msg = s"publish to subscriber ${subscriber.name} permanently failed returning [${e.getMessage}]"
-    logger.error(msg)
 
     service
       .completeWithStatus(workItem, PermanentlyFailed)

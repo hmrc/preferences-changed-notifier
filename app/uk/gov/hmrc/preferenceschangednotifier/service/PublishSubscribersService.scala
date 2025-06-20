@@ -74,13 +74,12 @@ class PublishSubscribersService @Inject() (
       Source
         .tick(config.initialDelay, config.interval, tick = ())
         .mapAsync(1)(_ =>
-          logger.debug(s"-> Tick received at ${Instant.now()}")
-          executeInLock()
+          logger.debug(s"-> Tick source received")
+          startWorkloadStream()
         )
         .viaMat(KillSwitches.single)(Keep.right)
         .toMat(Sink.ignore)(Keep.both)
-        .run()
-    // Run forever
+        .run() // Run forever
 
     this.killSwitch = Some(killSwitch)
 
@@ -93,21 +92,22 @@ class PublishSubscribersService @Inject() (
   }
 
   // Attempt to acquire lock and run the body
-  def executeInLock(): Future[Unit] =
+  def startWorkloadStream(): Future[Unit] =
     // Acquire a lock
     withLock {
-      logger.debug(s"Lock acquired, calling execute() at ${Instant.now()}")
+      logger.debug(s"Lock acquired, calling execute()")
       // Execute this body when lock successfully acquired
       execute()
     }
       .map {
         case Some(result) =>
-          logger.debug(s"Lock processing completed at ${Instant.now()}")
           logger.info(s"Successfully processed work under lock: $result")
         case None =>
           logger.info("Lock held by another instance; skipping")
       }
-      .recover { case ex => logger.error(s"Lock acquisition failed: $ex") }
+      .recover { case ex =>
+        logger.error(s"Lock acquisition failed: $ex")
+      }
 
   // Batch processing, streams one workitem at a time
   def execute(): Future[Result] =
@@ -118,10 +118,17 @@ class PublishSubscribersService @Inject() (
         // If pull returns None, stream will close.
         service
           .pull(config.retryFailedAfter)
-          .map(_.map(wi => ((), wi)))
+          .map(_.map(workItem => ((), workItem)))
       )
       // Apply rate limiting for downstream processing
       .throttle(config.elements, per = config.duration)
+      .watchTermination() { (_, done) =>
+        done.onComplete {
+          case Success(_)  => logger.info(s"Workload stream terminated")
+          case Failure(ex) => logger.error(s"Workload stream terminated with error: $ex")
+        }
+        done
+      }
       .runFoldAsync(Result()) { (acc, item) =>
         processWorkItem(acc, item).map(res => Result(res.message))
       }
@@ -138,9 +145,13 @@ class PublishSubscribersService @Inject() (
         .find(workItem.item.preferenceChangedId)
         .flatMap {
           case Right(pc) =>
+            logger.debug(
+              s"Preference changed record for workItem id: ${workItem.id} " +
+                s"located, attempting to publish"
+            )
             publish(pc, workItem).map(r => Result(s"${r.message}\n${acc.message}"))
           case Left(msg) =>
-            logger.error(s"Failed to find preferencesChanged document: $msg")
+            logger.error(s"Failed to find preferencesChanged document for workItem id:${workItem.id} msg: $msg")
             audit(workItem, msg)
             Future.successful(Result(s"> $msg ${acc.message}"))
         }
@@ -158,7 +169,9 @@ class PublishSubscribersService @Inject() (
       .execute(NotifySubscriberRequest(pc), workItem)
       .map {
         case Right(result) =>
-          logger.info(s"Publish completed: $result")
+          logger.info(
+            s"Publish to subscriber ${workItem.item.subscriber} completed for workItem id:${workItem.id}: $result"
+          )
           result
         case Left(msg) =>
           logger.error(s"Publish to subscriber ${workItem.item.subscriber} failed: $msg")
