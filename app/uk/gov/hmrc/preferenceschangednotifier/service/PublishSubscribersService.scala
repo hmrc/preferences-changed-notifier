@@ -74,7 +74,7 @@ class PublishSubscribersService @Inject() (
       Source
         .tick(config.initialDelay, config.interval, tick = ())
         .mapAsync(1)(_ =>
-          logger.debug(s"-> Tick source received")
+          logger.debug(s"-> Tick")
           startWorkloadStream()
         )
         .viaMat(KillSwitches.single)(Keep.right)
@@ -95,15 +95,15 @@ class PublishSubscribersService @Inject() (
   def startWorkloadStream(): Future[Unit] =
     // Acquire a lock
     withLock {
-      logger.debug(s"Lock acquired, calling execute()")
+      logger.debug(s"Workload stream starting")
       // Execute this body when lock successfully acquired
       execute()
     }
       .map {
         case Some(result) =>
-          logger.info(s"Successfully processed work under lock: $result")
+          logger.debug(s"Successfully processed work under lock: $result")
         case None =>
-          logger.info("Lock held by another instance; skipping")
+          logger.debug("Lock held by another instance; skipping")
       }
       .recover { case ex =>
         logger.error(s"Lock acquisition failed: $ex")
@@ -124,7 +124,7 @@ class PublishSubscribersService @Inject() (
       .throttle(config.elements, per = config.duration)
       .watchTermination() { (_, done) =>
         done.onComplete {
-          case Success(_)  => logger.info(s"Workload stream terminated")
+          case Success(_)  => logger.debug(s"Workload stream terminated")
           case Failure(ex) => logger.error(s"Workload stream terminated with error: $ex")
         }
         done
