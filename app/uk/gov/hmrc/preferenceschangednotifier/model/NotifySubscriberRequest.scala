@@ -32,11 +32,7 @@ object NotifySubscriberRequest {
   def apply(pc: PreferencesChanged): NotifySubscriberRequest =
     NotifySubscriberRequest(pc.changedValue, pc.updatedAt, pc.taxIds, pc.bounced)
 
-  private implicit val dtf: Writes[Instant] =
-    RestInstantFormat.writes
-  private implicit val mdf: Writes[MessageDeliveryFormat] =
-    MessageDeliveryFormat.given_Writes_MessageDeliveryFormat
-
-  implicit val writes: Writes[NotifySubscriberRequest] =
-    Json.writes[NotifySubscriberRequest]
+  import RestInstantFormat.writes
+  import MessageDeliveryFormat.given_Writes_MessageDeliveryFormat
+  implicit val writes: Writes[NotifySubscriberRequest] = Json.writes[NotifySubscriberRequest]
 }

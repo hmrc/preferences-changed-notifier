@@ -32,7 +32,7 @@ case class PreferencesChangedRequest(
 )
 
 object PreferencesChangedRequest {
-  given Format[MessageDeliveryFormat] = MessageDeliveryFormat.given_Format_MessageDeliveryFormat
-  given Reads[Instant] = RestInstantFormat.reads
+  import MessageDeliveryFormat.given_Format_MessageDeliveryFormat
+  import RestInstantFormat.reads
   given Reads[PreferencesChangedRequest] = Json.reads[PreferencesChangedRequest]
 }

@@ -29,8 +29,6 @@ case class PreferencesChangedRef(
 
 object PreferencesChangedRef {
   given Format[ObjectId] = MongoFormats.objectIdFormat
-  given Format[EntityId] = EntityId.given_Format_EntityId
-  given Reads[PreferencesChangedRef] = Json.reads[PreferencesChangedRef]
-  given OWrites[PreferencesChangedRef] = Json.writes[PreferencesChangedRef]
+  import EntityId.given_Format_EntityId
   given OFormat[PreferencesChangedRef] = Json.format[PreferencesChangedRef]
 }

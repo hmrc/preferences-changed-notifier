@@ -53,10 +53,8 @@ object PreferencesChanged {
 
   given Format[ObjectId] = MongoFormats.objectIdFormat
   given Format[Instant] = MongoJavatimeFormats.instantFormat
-  given Format[EntityId] = EntityId.given_Format_EntityId
-  given Format[MessageDeliveryFormat] = MessageDeliveryFormat.given_Format_MessageDeliveryFormat
+  import EntityId.given_Format_EntityId
+  import MessageDeliveryFormat.given_Format_MessageDeliveryFormat
 
-  given Reads[PreferencesChanged] = Json.reads[PreferencesChanged]
-  given OWrites[PreferencesChanged] = Json.writes[PreferencesChanged]
   given OFormat[PreferencesChanged] = Json.format[PreferencesChanged]
 }

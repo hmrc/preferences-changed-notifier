@@ -43,7 +43,6 @@ import uk.gov.hmrc.preferenceschangednotifier.model.{ EntityId, PreferencesChang
 import uk.gov.hmrc.preferenceschangednotifier.repository.{ PreferencesChangedRepository, PreferencesChangedWorkItemRepository }
 
 import java.time.Instant
-import java.util.UUID
 import scala.concurrent.ExecutionContext
 
 class PublishSubscribersServiceISpec

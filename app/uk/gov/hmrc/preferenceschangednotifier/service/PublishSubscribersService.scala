@@ -134,7 +134,7 @@ class PublishSubscribersService @Inject() (
       .map(_ => ())
       .recover { case ex =>
         logger.error(s"Recovery error $ex")
-        Future.successful(())
+        Future.unit
       }
 
   private def processWorkItem(workItem: WorkItem[PreferencesChangedRef]): Future[Unit] = {
@@ -153,10 +153,9 @@ class PublishSubscribersService @Inject() (
           case Left(msg) =>
             logger.error(s"Failed to find preferencesChanged document for workItem id:${workItem.id} msg: $msg")
             audit(workItem, msg)
-            Future.successful(())
+            Future.unit
         }
-    }
-      .getOrElse(Future.successful(()))
+    }.getOrElse(Future.unit)
   }
 
   // Send a notification to the systems that are registered.

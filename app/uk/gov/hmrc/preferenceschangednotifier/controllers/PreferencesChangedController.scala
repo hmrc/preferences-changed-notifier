@@ -42,9 +42,8 @@ class PreferencesChangedController @Inject() (
           .preferenceChanged(body)
           .fold(
             {
-              case RequestError(r)     => BadRequest(r)
-              case PersistenceError(p) => InternalServerError(p)
-              case ServerError(s)      => InternalServerError(s)
+              case RequestError(r)                            => BadRequest(r)
+              case e @ (PersistenceError(_) | ServerError(_)) => InternalServerError(e.message)
             },
             _ => Ok
           )
