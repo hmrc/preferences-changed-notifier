@@ -19,7 +19,7 @@ package uk.gov.hmrc.preferenceschangednotifier.model
 import org.scalatest.freespec.AnyFreeSpec
 import org.mongodb.scala.bson.ObjectId
 import org.scalatest.matchers.must.Matchers.{ equal, have, must, mustEqual, the }
-import play.api.libs.json.JsObject
+import play.api.libs.json.{ JsObject, Json }
 import uk.gov.hmrc.preferenceschangednotifier.controllers.model.PreferencesChangedRequest
 import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat.Paper
 
@@ -32,7 +32,7 @@ class PreferencesChangedSpec extends AnyFreeSpec {
   spec =>
 
   "Preferences changed json writes" - {
-    val entityId = UUID.randomUUID().toString
+    val entityId = EntityId.generate()
 
     "MessageDeliveryFormat format correctly" in {
       val a = PreferencesChanged(
@@ -47,9 +47,7 @@ class PreferencesChangedSpec extends AnyFreeSpec {
         false
       )
 
-      val writer = PreferencesChanged.writes
-      val json = writer.writes(a)
-
+      val json = Json.toJson(a)
       (json \ "changedValue").as[String] mustEqual (Paper.name)
     }
 
@@ -67,8 +65,7 @@ class PreferencesChangedSpec extends AnyFreeSpec {
         true
       )
 
-      val writer = PreferencesChanged.writes
-      val json = writer.writes(a)
+      val json = Json.toJson(a)
 
       val dateResult = (json \ "updatedAt").as[JsObject]
       val dateFormat = dateResult("$date").as[Map[String, String]]
@@ -90,8 +87,7 @@ class PreferencesChangedSpec extends AnyFreeSpec {
         true
       )
 
-      val writer = PreferencesChanged.writes
-      val json = writer.writes(a)
+      val json = Json.toJson(a)
 
       val result = (json \ "preferenceId" \ "$oid").as[String]
       result mustEqual preferenceId.toString
@@ -111,8 +107,7 @@ class PreferencesChangedSpec extends AnyFreeSpec {
         false
       )
 
-      val writer = PreferencesChanged.writes
-      val json = writer.writes(a)
+      val json = Json.toJson(a)
 
       val taxIds = (json \ "taxIds").as[Map[String, String]]
       taxIds mustEqual Map("nino" -> "AB112233D", "sautr" -> "sautr1")
@@ -120,14 +115,14 @@ class PreferencesChangedSpec extends AnyFreeSpec {
   }
 
   "convert from PreferencesChangedRequest" - {
-    val entityId = UUID.randomUUID().toString
+    val entityId = EntityId.generate()
 
     "check preferenceId" in {
       val pid = new ObjectId()
       val req = PreferencesChangedRequest(
         changedValue = Paper,
         preferenceId = pid.toString,
-        entityId = entityId,
+        entityId = entityId.toString,
         updatedAt = Instant.now(),
         taxIds = Map.empty,
         true
@@ -140,7 +135,7 @@ class PreferencesChangedSpec extends AnyFreeSpec {
       val req = PreferencesChangedRequest(
         changedValue = Paper,
         preferenceId = "111",
-        entityId = entityId,
+        entityId = entityId.toString,
         updatedAt = Instant.now(),
         taxIds = Map.empty,
         false
@@ -155,7 +150,7 @@ class PreferencesChangedSpec extends AnyFreeSpec {
       val req = PreferencesChangedRequest(
         changedValue = Paper,
         preferenceId = new ObjectId().toString,
-        entityId = entityId,
+        entityId = entityId.toString,
         updatedAt = Instant.now(),
         taxIds = Map("taxId1" -> "1234"),
         true

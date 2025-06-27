@@ -29,7 +29,7 @@ import uk.gov.hmrc.mongo.workitem.WorkItem
 import uk.gov.hmrc.preferenceschangednotifier.connectors.{ EpsHodsAdapterConnector, UpdatedPrintSuppressionsConnector }
 import uk.gov.hmrc.preferenceschangednotifier.controllers.model.PreferencesChangedRequest
 import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat.{ Digital, Paper }
-import uk.gov.hmrc.preferenceschangednotifier.model.{ PersistenceError, PreferencesChanged, PreferencesChangedRef }
+import uk.gov.hmrc.preferenceschangednotifier.model.{ EntityId, PersistenceError, PreferencesChanged, PreferencesChangedRef }
 import uk.gov.hmrc.preferenceschangednotifier.repository.{ PreferencesChangedRepository, PreferencesChangedWorkItemRepository }
 
 import java.time.Instant
@@ -57,7 +57,7 @@ class PreferencesChangedServiceSpec extends AnyFreeSpec with ScalaFutures with B
   }
 
   "Preferences changed service" - {
-    val entityId = UUID.randomUUID().toString
+    val entityId = EntityId.generate()
 
     "should correctly add an item to the repo, but NOT add a workitem" in {
       val pId = new ObjectId("75259498e6baf61da75dceef")
@@ -81,7 +81,7 @@ class PreferencesChangedServiceSpec extends AnyFreeSpec with ScalaFutures with B
       val pcr = PreferencesChangedRequest(
         changedValue = Paper,
         new ObjectId().toString,
-        entityId,
+        entityId.toString,
         Instant.now,
         taxIds = Map.empty,
         true
@@ -140,7 +140,7 @@ class PreferencesChangedServiceSpec extends AnyFreeSpec with ScalaFutures with B
       val pcr = PreferencesChangedRequest(
         changedValue = Digital,
         preferenceId = pc1.preferenceId.toString,
-        entityId,
+        entityId.toString,
         Instant.now,
         taxIds = Map("nino" -> "AB112233A"),
         false
@@ -177,7 +177,7 @@ class PreferencesChangedServiceSpec extends AnyFreeSpec with ScalaFutures with B
       val pcr = PreferencesChangedRequest(
         changedValue = Digital,
         preferenceId = pc.preferenceId.toString,
-        entityId,
+        entityId.toString,
         Instant.now,
         taxIds = Map.empty,
         false
@@ -216,7 +216,7 @@ class PreferencesChangedServiceSpec extends AnyFreeSpec with ScalaFutures with B
       val pcr = PreferencesChangedRequest(
         changedValue = Paper,
         new ObjectId("75259498e6baf61da75dceef").toString,
-        entityId,
+        entityId.toString,
         Instant.now,
         taxIds = Map.empty,
         true
@@ -236,7 +236,7 @@ class PreferencesChangedServiceSpec extends AnyFreeSpec with ScalaFutures with B
       val pcr = PreferencesChangedRequest(
         changedValue = Paper,
         new ObjectId().toString,
-        entityId,
+        entityId.toString,
         Instant.now,
         taxIds = Map.empty,
         false
@@ -253,7 +253,8 @@ class PreferencesChangedServiceSpec extends AnyFreeSpec with ScalaFutures with B
       when(repo.upsert(any[PreferencesChanged]))
         .thenThrow(new RuntimeException("whoa, throwing!"))
 
-      val pcr = PreferencesChangedRequest(Paper, new ObjectId().toString, entityId, Instant.now, Map.empty, true)
+      val pcr =
+        PreferencesChangedRequest(Paper, new ObjectId().toString, entityId.toString, Instant.now, Map.empty, true)
 
       val result =
         svc.preferenceChanged(pcr).value.futureValue

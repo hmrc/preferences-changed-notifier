@@ -24,11 +24,12 @@ import org.scalatest.concurrent.{ IntegrationPatience, ScalaFutures }
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers.{ be, must, mustBe, mustEqual }
 import play.api.Configuration
+import play.api.libs.json.Format
 import play.api.test.Helpers
 import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
 import uk.gov.hmrc.mongo.test.{ DefaultPlayMongoRepositorySupport, MongoSupport }
 import uk.gov.hmrc.mongo.workitem.{ ProcessingStatus, WorkItem }
-import uk.gov.hmrc.preferenceschangednotifier.model.PreferencesChangedRef
+import uk.gov.hmrc.preferenceschangednotifier.model.{ EntityId, PreferencesChangedRef }
 
 import java.time.Instant
 import java.util.UUID
@@ -57,7 +58,7 @@ class PreferencesChangedWorkItemRepositorySpec
   }
 
   "Preferences changed repository" - {
-    val entityId = UUID.randomUUID().toString
+    val entityId = EntityId.generate()
 
     "test indexes" in {
       val indexes: Seq[model.IndexModel] = preferencesChangedWorkItemRepository.indexes

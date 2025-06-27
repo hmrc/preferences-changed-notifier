@@ -16,8 +16,9 @@
 
 package uk.gov.hmrc.preferenceschangednotifier.controllers.model
 
+import org.mongodb.scala.bson.ObjectId
 import play.api.libs.json.{ Format, Json, Reads }
-import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat
+import uk.gov.hmrc.preferenceschangednotifier.model.{ EntityId, MessageDeliveryFormat }
 
 import java.time.Instant
 
@@ -31,9 +32,7 @@ case class PreferencesChangedRequest(
 )
 
 object PreferencesChangedRequest {
-  implicit val mdFormat: Format[MessageDeliveryFormat] =
-    MessageDeliveryFormat.format
-  implicit val dateTimeFormat: Reads[Instant] = RestInstantFormat.reads
-  implicit val reads: Reads[PreferencesChangedRequest] =
-    Json.reads[PreferencesChangedRequest]
+  import MessageDeliveryFormat.given_Format_MessageDeliveryFormat
+  import RestInstantFormat.reads
+  given Reads[PreferencesChangedRequest] = Json.reads[PreferencesChangedRequest]
 }

@@ -25,7 +25,7 @@ import play.api.Logging
 import uk.gov.hmrc.mongo.workitem.{ ResultStatus, WorkItem }
 import uk.gov.hmrc.preferenceschangednotifier.connectors.Subscriber
 import uk.gov.hmrc.preferenceschangednotifier.controllers.model.PreferencesChangedRequest
-import uk.gov.hmrc.preferenceschangednotifier.model.{ ErrorResponse, PersistenceError, PreferencesChanged, PreferencesChangedRef, RequestError }
+import uk.gov.hmrc.preferenceschangednotifier.model.{ EntityId, ErrorResponse, PersistenceError, PreferencesChanged, PreferencesChangedRef, RequestError }
 import uk.gov.hmrc.preferenceschangednotifier.repository.{ PreferencesChangedRepository, PreferencesChangedWorkItemRepository }
 
 import java.time.Instant
@@ -64,14 +64,9 @@ class PreferencesChangedService @Inject() (
         Instant.now().minusSeconds(retryFailedAfter.toSeconds),
         Instant.now()
       )
-      .recoverWith {
-        case ex: RuntimeException
-            if ex.getMessage contains "Failed to parse json as uk.gov.hmrc.mongo.workitem.WorkItem" =>
-          logger.debug(s"Trying again $ex")
-          pull(retryFailedAfter)
-        case ex =>
-          logger.debug(s"Failed $ex")
-          throw ex
+      .recoverWith { case ex =>
+        logger.error(s"Failed to pull outstanding workItems: $ex")
+        throw ex
       }
 
   def preferenceChanged(pcRequest: PreferencesChangedRequest): EitherT[Future, ErrorResponse, Unit] =
@@ -81,7 +76,7 @@ class PreferencesChangedService @Inject() (
                addPreferenceChangedWorkItems(
                  pcId,
                  new ObjectId(pcRequest.preferenceId),
-                 pcRequest.entityId,
+                 EntityId(pcRequest.entityId),
                  pcRequest.taxIds
                )
              )
@@ -121,7 +116,7 @@ class PreferencesChangedService @Inject() (
   private def addPreferenceChangedWorkItems(
     pcId: ObjectId,
     pId: ObjectId,
-    entityId: String,
+    entityId: EntityId,
     taxIds: Map[String, String]
   ): Future[Either[ErrorResponse, Unit]] =
     filterSubscribers(taxIds) match {
