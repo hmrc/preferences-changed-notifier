@@ -110,7 +110,7 @@ class PublishSubscribersService @Inject() (
       }
 
   // Batch processing, streams one workitem at a time
-  def execute(): Future[Result] =
+  def execute(): Future[Unit] =
     // Generate a source by attempting to get a workitem
     Source
       .unfoldAsync(())(_ =>
@@ -129,15 +129,15 @@ class PublishSubscribersService @Inject() (
         }
         done
       }
-      .runFoldAsync(Result()) { (acc, item) =>
-        processWorkItem(acc, item).map(res => Result(res.message))
-      }
+      .mapAsync(1)(processWorkItem)
+      .run()
+      .map(_ => ())
       .recover { case ex =>
         logger.error(s"Recovery error $ex")
-        Result(ex.getMessage)
+        Future.successful(())
       }
 
-  private def processWorkItem(acc: Result, workItem: WorkItem[PreferencesChangedRef]): Future[Result] = {
+  private def processWorkItem(workItem: WorkItem[PreferencesChangedRef]): Future[Unit] = {
     logger.debug(s"Processing workitem: $workItem")
 
     Try {
@@ -149,22 +149,19 @@ class PublishSubscribersService @Inject() (
               s"Preference changed record for workItem id: ${workItem.id} " +
                 s"located, attempting to publish"
             )
-            publish(pc, workItem).map(r => Result(s"${r.message}\n${acc.message}"))
+            publish(pc, workItem)
           case Left(msg) =>
             logger.error(s"Failed to find preferencesChanged document for workItem id:${workItem.id} msg: $msg")
             audit(workItem, msg)
-            Future.successful(Result(s"> $msg ${acc.message}"))
+            Future.successful(())
         }
-    } match {
-      case Success(value) => value
-      case Failure(exception) =>
-        Future.successful(Result(s"${exception.getMessage}"))
     }
+      .getOrElse(Future.successful(()))
   }
 
   // Send a notification to the systems that are registered.
   // PreferencesChangedRef.subscriber determines system to send request to.
-  private def publish(pc: PreferencesChanged, workItem: WorkItem[PreferencesChangedRef]): Future[Result] =
+  private def publish(pc: PreferencesChanged, workItem: WorkItem[PreferencesChangedRef]): Future[Unit] =
     publisher
       .execute(NotifySubscriberRequest(pc), workItem)
       .map {
@@ -172,11 +169,9 @@ class PublishSubscribersService @Inject() (
           logger.info(
             s"Publish to subscriber ${workItem.item.subscriber} completed for workItem id:${workItem.id}: $result"
           )
-          result
         case Left(msg) =>
           logger.error(s"Publish to subscriber ${workItem.item.subscriber} failed: $msg")
           audit(pc, msg)
-          Result(msg)
       }
 
   private def audit(pc: PreferencesChanged, msg: String): Unit =

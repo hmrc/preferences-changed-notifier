@@ -51,7 +51,7 @@ class PreferencesChangedRequestSpec extends AnyFreeSpec {
   }
 
   private def createPcr = {
-    val reader = PreferencesChangedRequest.reads
+    val reader = PreferencesChangedRequest.given_Reads_PreferencesChangedRequest
     reader.reads(createJson()).get
   }
 

@@ -35,7 +35,7 @@ object NotifySubscriberRequest {
   private implicit val dtf: Writes[Instant] =
     RestInstantFormat.writes
   private implicit val mdf: Writes[MessageDeliveryFormat] =
-    MessageDeliveryFormat.writes
+    MessageDeliveryFormat.given_Writes_MessageDeliveryFormat
 
   implicit val writes: Writes[NotifySubscriberRequest] =
     Json.writes[NotifySubscriberRequest]

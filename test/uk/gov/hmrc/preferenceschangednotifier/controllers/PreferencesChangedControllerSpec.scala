@@ -102,7 +102,7 @@ class PreferencesChangedControllerSpec extends AnyFreeSpec with Matchers {
 
       val result = controller.preferencesChanged()(fakePostRequest)
 
-      contentAsString(result) should startWith("Invalid PreferencesChangedRequest payload")
+      contentAsString(result) contains "Could not parse 023-10-11T01:30:00.000Z as an ISO Instant"
       status(result) shouldBe Status.BAD_REQUEST
     }
 

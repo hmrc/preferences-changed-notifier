@@ -29,7 +29,7 @@ import java.time.Instant
   */
 case class PreferencesChanged(
   _id: ObjectId,
-  entityId: String,
+  entityId: EntityId,
   changedValue: MessageDeliveryFormat,
   preferenceId: ObjectId,
   updatedAt: Instant,
@@ -43,7 +43,7 @@ object PreferencesChanged {
   def from(pcRequest: PreferencesChangedRequest): PreferencesChanged =
     PreferencesChanged(
       _id = new ObjectId(),
-      entityId = pcRequest.entityId,
+      entityId = EntityId(pcRequest.entityId),
       changedValue = pcRequest.changedValue,
       preferenceId = new ObjectId(pcRequest.preferenceId),
       updatedAt = pcRequest.updatedAt,
@@ -51,13 +51,12 @@ object PreferencesChanged {
       bounced = pcRequest.bounced
     )
 
-  implicit val objectIdFormat: Format[ObjectId] = MongoFormats.objectIdFormat
-  implicit val dtf: Format[Instant] = MongoJavatimeFormats.instantFormat
-  implicit val mdf: Format[MessageDeliveryFormat] = MessageDeliveryFormat.format
+  given Format[ObjectId] = MongoFormats.objectIdFormat
+  given Format[Instant] = MongoJavatimeFormats.instantFormat
+  given Format[EntityId] = EntityId.given_Format_EntityId
+  given Format[MessageDeliveryFormat] = MessageDeliveryFormat.given_Format_MessageDeliveryFormat
 
-  implicit val reads: Reads[PreferencesChanged] = Json.reads[PreferencesChanged]
-  implicit val writes: OWrites[PreferencesChanged] =
-    Json.writes[PreferencesChanged]
-  implicit val format: OFormat[PreferencesChanged] =
-    Json.format[PreferencesChanged]
+  given Reads[PreferencesChanged] = Json.reads[PreferencesChanged]
+  given OWrites[PreferencesChanged] = Json.writes[PreferencesChanged]
+  given OFormat[PreferencesChanged] = Json.format[PreferencesChanged]
 }

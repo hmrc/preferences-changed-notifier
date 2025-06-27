@@ -22,11 +22,17 @@ import org.mongodb.scala.SingleObservableFuture
 import play.api.Configuration
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.workitem.{ ProcessingStatus, WorkItem, WorkItemFields, WorkItemRepository }
-import uk.gov.hmrc.preferenceschangednotifier.model.PreferencesChangedRef
+import uk.gov.hmrc.preferenceschangednotifier.model.{ EntityId, PreferencesChanged, PreferencesChangedRef }
 
 import java.time.{ Duration, Instant }
 import javax.inject.{ Inject, Singleton }
 import scala.concurrent.{ ExecutionContext, Future }
+import org.bson.codecs.configuration.CodecRegistries.{ fromProviders, fromRegistries }
+import org.mongodb.scala.bson.codecs.Macros
+import org.mongodb.scala.bson.codecs.Macros.createCodecProvider
+import play.api.libs.json.{ Format, OFormat }
+import EntityId.*
+import uk.gov.hmrc.mongo.play.json.Codecs
 
 /** A work item represents an item in a queue which will represent a preferenceId and a subscriber. There will be
   * duplicates, and that is ok, typically when one is already in progress or completed.
@@ -39,8 +45,11 @@ class PreferencesChangedWorkItemRepository @Inject() (
     extends WorkItemRepository[PreferencesChangedRef](
       collectionName = "preferencesChangedWorkItem",
       mongoComponent = mongoComponent,
-      itemFormat = PreferencesChangedRef.format,
+      itemFormat = PreferencesChangedRef.given_OFormat_PreferencesChangedRef,
       workItemFields = WorkItemFields.default,
+      extraCodecs = Seq(
+        Codecs.playFormatCodec(EntityId.given_Format_EntityId)
+      ),
       extraIndexes = Seq(
         IndexModel(
           ascending("item.entityId"),

@@ -34,7 +34,7 @@ import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.play.audit.http.connector.AuditResult.Failure
 import uk.gov.hmrc.preferenceschangednotifier.connectors.{ EpsHodsAdapterConnector, UpdatedPrintSuppressionsConnector }
 import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat.Digital
-import uk.gov.hmrc.preferenceschangednotifier.model.{ NotifySubscriberRequest, PreferencesChangedRef, Result }
+import uk.gov.hmrc.preferenceschangednotifier.model.{ EntityId, NotifySubscriberRequest, PreferencesChangedRef, Result }
 
 import java.time.Instant
 import java.util.UUID
@@ -64,7 +64,7 @@ class PublishSubscribersPublisherSpec
     val preferenceChangedId = new ObjectId()
     val preferenceId = new ObjectId()
     val workItemId = new ObjectId()
-    val entityId = UUID.randomUUID().toString
+    val entityId = EntityId.generate()
 
     val pcr1 = PreferencesChangedRef(preferenceChangedId, preferenceId, entityId, "EpsHodsAdapter")
     WorkItem(

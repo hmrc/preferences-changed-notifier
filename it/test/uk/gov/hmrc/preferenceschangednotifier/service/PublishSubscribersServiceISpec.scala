@@ -39,7 +39,7 @@ import uk.gov.hmrc.mongo.workitem.{ ProcessingStatus, WorkItem }
 import uk.gov.hmrc.preferenceschangednotifier.WireMockUtil
 import uk.gov.hmrc.preferenceschangednotifier.connectors.{ EpsHodsAdapterConnector, Subscriber, UpdatedPrintSuppressionsConnector }
 import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat.Paper
-import uk.gov.hmrc.preferenceschangednotifier.model.{ PreferencesChanged, PreferencesChangedRef }
+import uk.gov.hmrc.preferenceschangednotifier.model.{ EntityId, PreferencesChanged, PreferencesChangedRef }
 import uk.gov.hmrc.preferenceschangednotifier.repository.{ PreferencesChangedRepository, PreferencesChangedWorkItemRepository }
 
 import java.time.Instant
@@ -149,8 +149,7 @@ class PublishSubscribersServiceISpec
           .build()
       )
 
-      private val result = service.execute().futureValue
-      result.message must include("will retry")
+      private val _ = service.execute().futureValue
 
       eventually(timeout(Span(3, Seconds))) {
         val filter = Filters.equal("item.subscriber", "EpsHodsAdapter")
@@ -219,7 +218,7 @@ class PublishSubscribersServiceISpec
 
     // push an item into the pc repo
     val prefId = new ObjectId()
-    val entityId = UUID.randomUUID().toString
+    val entityId = EntityId.generate()
 
     val pc = createPc(
       prefId = prefId,
@@ -233,7 +232,7 @@ class PublishSubscribersServiceISpec
       val m = (ninoPair ++ sautrPair).toMap
 
       val prefId = new ObjectId()
-      val entityId = UUID.randomUUID().toString
+      val entityId = EntityId.generate()
 
       val pc = createPc(
         prefId = prefId,
@@ -253,7 +252,12 @@ class PublishSubscribersServiceISpec
       (wi1, wi2)
     }
 
-    private def createPcr(preferenceChangedId: ObjectId, preferenceId: ObjectId, entityId: String, subscriber: String) =
+    private def createPcr(
+      preferenceChangedId: ObjectId,
+      preferenceId: ObjectId,
+      entityId: EntityId,
+      subscriber: String
+    ) =
       PreferencesChangedRef(
         preferenceChangedId = preferenceChangedId,
         preferenceId = preferenceId,
@@ -261,7 +265,7 @@ class PublishSubscribersServiceISpec
         subscriber = subscriber
       )
 
-    private def createPc(prefId: ObjectId, entityId: String, taxIds: Map[String, String]) =
+    private def createPc(prefId: ObjectId, entityId: EntityId, taxIds: Map[String, String]) =
       PreferencesChanged(
         _id = new ObjectId,
         changedValue = Paper,

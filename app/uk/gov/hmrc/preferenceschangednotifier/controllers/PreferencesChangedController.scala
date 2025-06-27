@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.preferenceschangednotifier.controllers
 
-import play.api.libs.json.{ JsValue, Reads }
+import play.api.libs.json.{ JsError, JsSuccess, JsValue, Json, Reads }
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import play.api.mvc.{ Action, ControllerComponents }
 import uk.gov.hmrc.preferenceschangednotifier.controllers.model.PreferencesChangedRequest
@@ -24,7 +24,7 @@ import uk.gov.hmrc.preferenceschangednotifier.service.PreferencesChangedService
 import uk.gov.hmrc.preferenceschangednotifier.model.{ PersistenceError, RequestError, ServerError }
 
 import javax.inject.{ Inject, Singleton }
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ ExecutionContext, Future }
 
 @Singleton
 class PreferencesChangedController @Inject() (
@@ -33,21 +33,23 @@ class PreferencesChangedController @Inject() (
 )(implicit val ec: ExecutionContext)
     extends BackendController(cc) {
 
-  implicit val pcr: Reads[PreferencesChangedRequest] =
-    PreferencesChangedRequest.reads
+  import PreferencesChangedRequest.given_Reads_PreferencesChangedRequest
 
-  def preferencesChanged(): Action[JsValue] = Action.async(parse.json) { implicit request =>
-    withJsonBody[PreferencesChangedRequest] { body =>
-      svc
-        .preferenceChanged(body)
-        .fold(
-          {
-            case RequestError(r)     => BadRequest(r)
-            case PersistenceError(p) => InternalServerError(p)
-            case ServerError(s)      => InternalServerError(s)
-          },
-          _ => Ok
-        )
+  def preferencesChanged(): Action[JsValue] = Action.async(parse.tolerantJson) { implicit request =>
+    request.body.validate[PreferencesChangedRequest] match {
+      case JsSuccess(body, _) =>
+        svc
+          .preferenceChanged(body)
+          .fold(
+            {
+              case RequestError(r)     => BadRequest(r)
+              case PersistenceError(p) => InternalServerError(p)
+              case ServerError(s)      => InternalServerError(s)
+            },
+            _ => Ok
+          )
+      case JsError(errors) =>
+        Future.successful(BadRequest(s"Invalid JSON format, ${JsError.toJson(errors)}"))
     }
   }
 }

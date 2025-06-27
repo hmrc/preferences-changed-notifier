@@ -21,8 +21,9 @@ import org.mongodb.scala.SingleObservableFuture
 import org.mongodb.scala.model.{ Filters, FindOneAndUpdateOptions, IndexModel, IndexOptions, Indexes, Updates }
 import play.api.{ Configuration, Logger }
 import uk.gov.hmrc.mongo.MongoComponent
-import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
-import uk.gov.hmrc.preferenceschangednotifier.model.PreferencesChanged
+import uk.gov.hmrc.mongo.play.json.{ Codecs, PlayMongoRepository }
+import uk.gov.hmrc.preferenceschangednotifier.model.{ EntityId, PreferencesChanged }
+import uk.gov.hmrc.preferenceschangednotifier.model.EntityId.*
 
 import java.util.concurrent.TimeUnit
 import javax.inject.{ Inject, Singleton }
@@ -39,7 +40,7 @@ class PreferencesChangedRepository @Inject() (mongo: MongoComponent, config: Con
 ) extends PlayMongoRepository[PreferencesChanged](
       mongoComponent = mongo,
       collectionName = "preferencesChanged",
-      domainFormat = PreferencesChanged.format,
+      domainFormat = PreferencesChanged.given_OFormat_PreferencesChanged,
       indexes = List(
         IndexModel(
           Indexes.ascending("entityId")
@@ -48,6 +49,9 @@ class PreferencesChangedRepository @Inject() (mongo: MongoComponent, config: Con
           Indexes.ascending("updatedAt"),
           IndexOptions().expireAfter(config.get[Long]("preferencesChanged.ttl"), TimeUnit.DAYS)
         )
+      ),
+      extraCodecs = Seq(
+        Codecs.playFormatCodec(EntityId.given_Format_EntityId)
       ),
       replaceIndexes = true
     ) {

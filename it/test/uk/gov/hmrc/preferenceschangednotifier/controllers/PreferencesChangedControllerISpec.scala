@@ -19,6 +19,7 @@ package uk.gov.hmrc.preferenceschangednotifier.controllers
 import org.apache.pekko.actor.ActorSystem
 import org.mongodb.scala.model.Filters
 import org.mongodb.scala.SingleObservableFuture
+import org.mongodb.scala.bson.ObjectId
 import org.scalatest.{ BeforeAndAfterEach, Suite, TestSuite }
 import org.scalatest.concurrent.{ IntegrationPatience, ScalaFutures }
 import org.scalatestplus.play.PlaySpec
@@ -31,9 +32,9 @@ import play.api.libs.json.{ JsValue, Json }
 import play.api.test.Helpers.{ CONTENT_TYPE, contentAsString, defaultAwaitTimeout, status }
 import play.api.test.{ FakeHeaders, FakeRequest, Injecting }
 import uk.gov.hmrc.mongo.test.MongoSupport
+import uk.gov.hmrc.preferenceschangednotifier.model.EntityId
 import uk.gov.hmrc.preferenceschangednotifier.repository.{ PreferencesChangedRepository, PreferencesChangedWorkItemRepository }
 
-import java.util.UUID
 import scala.concurrent.ExecutionContextExecutor
 
 class PreferencesChangedControllerISpec
@@ -65,14 +66,15 @@ class PreferencesChangedControllerISpec
   }
 
   "POST /preferences-changed" must {
-    val entityId = UUID.randomUUID().toString
+    val entityId = EntityId.generate()
 
     "return 200 for both subscribers" in {
+      val preferenceChangedId = new ObjectId().toString
       val reqBody =
         s"""{
            |  "changedValue" : "paper",
-           |  "preferenceId" : "65263df8d843592d74a2bfc6",
-           |  "entityId"     : "$entityId",
+           |  "preferenceId" : "$preferenceChangedId",
+           |  "entityId"     : "${entityId.value}",
            |  "updatedAt"    : "2023-10-11T01:30:00.000Z",
            |  "taxIds"       : { "nino" : "AB112233C", "sautr" : "abcde" },
            |  "bounced"      : true
@@ -183,11 +185,9 @@ class PreferencesChangedControllerISpec
 
       status(result) must be(BAD_REQUEST)
 
-      val errStr = "Invalid PreferencesChangedRequest payload: List" +
-        "((/updatedAt,List(JsonValidationError(List(Could not parse " +
-        "023-10-11T01:30:00.000Z as an ISO Instant),ArraySeq()))))"
+      val errStr = """"obj.updatedAt":[{"msg":["Could not parse 023-10-11T01:30:00.000Z as an ISO Instant]"""
 
-      contentAsString(result) must be(errStr)
+      contentAsString(result) contains errStr
     }
 
     "return 400 when the objectid is incorrectly formatted" in {

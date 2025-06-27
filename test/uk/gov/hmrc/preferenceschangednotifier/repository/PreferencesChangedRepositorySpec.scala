@@ -30,7 +30,7 @@ import play.api.test.Helpers
 import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
 import uk.gov.hmrc.mongo.test.{ DefaultPlayMongoRepositorySupport, MongoSupport }
 import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat.{ Digital, Paper }
-import uk.gov.hmrc.preferenceschangednotifier.model.PreferencesChanged
+import uk.gov.hmrc.preferenceschangednotifier.model.{ EntityId, PreferencesChanged }
 
 import java.time.Instant
 import java.util.UUID
@@ -77,7 +77,7 @@ class PreferencesChangedRepositorySpec
     }
 
     "inserts correctly" in {
-      val entityId = UUID.randomUUID().toString
+      val entityId = EntityId.generate()
       val a = PreferencesChanged(
         _id = new ObjectId(),
         entityId,
@@ -94,7 +94,7 @@ class PreferencesChangedRepositorySpec
     "upserts by preferenceId correctly" in {
       val preferenceId = new ObjectId()
       val objectId = new ObjectId()
-      val entityId = UUID.randomUUID().toString
+      val entityId = EntityId.generate()
 
       val a =
         PreferencesChanged(
@@ -134,9 +134,9 @@ class PreferencesChangedRepositorySpec
 
     "inserts two separate new objects correctly" in {
       val preferenceId1 = new ObjectId()
-      val entityId1 = UUID.randomUUID().toString
+      val entityId1 = EntityId.generate()
       val preferenceId2 = new ObjectId()
-      val entityId2 = UUID.randomUUID().toString
+      val entityId2 = EntityId.generate()
 
       val objectId1 = new ObjectId()
       val objectId2 = new ObjectId()

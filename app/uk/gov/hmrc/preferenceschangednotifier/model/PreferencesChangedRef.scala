@@ -17,23 +17,20 @@
 package uk.gov.hmrc.preferenceschangednotifier.model
 
 import org.mongodb.scala.bson.ObjectId
-import play.api.libs.json.{ Format, Json, OFormat, OWrites, Reads }
+import play.api.libs.json.{ Format, Json, OFormat, OWrites, Reads, Writes }
 import uk.gov.hmrc.mongo.play.json.formats.MongoFormats
 
 case class PreferencesChangedRef(
   preferenceChangedId: ObjectId, // reference to preferenceChanged._id
   preferenceId: ObjectId,
-  entityId: String, // INDEX
+  entityId: EntityId, // INDEX
   subscriber: String
 )
 
 object PreferencesChangedRef {
-  private implicit val objectIdFormat: Format[ObjectId] =
-    MongoFormats.objectIdFormat
-  implicit val reads: Reads[PreferencesChangedRef] =
-    Json.reads[PreferencesChangedRef]
-  implicit val writes: OWrites[PreferencesChangedRef] =
-    Json.writes[PreferencesChangedRef]
-  implicit val format: OFormat[PreferencesChangedRef] =
-    Json.format[PreferencesChangedRef]
+  given Format[ObjectId] = MongoFormats.objectIdFormat
+  given Format[EntityId] = EntityId.given_Format_EntityId
+  given Reads[PreferencesChangedRef] = Json.reads[PreferencesChangedRef]
+  given OWrites[PreferencesChangedRef] = Json.writes[PreferencesChangedRef]
+  given OFormat[PreferencesChangedRef] = Json.format[PreferencesChangedRef]
 }

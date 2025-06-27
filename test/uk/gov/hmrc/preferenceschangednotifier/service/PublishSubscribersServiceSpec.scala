@@ -37,7 +37,7 @@ import uk.gov.hmrc.mongo.workitem.WorkItem
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.preferenceschangednotifier.config.PublishSubscribersServiceConfig
 import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat.Paper
-import uk.gov.hmrc.preferenceschangednotifier.model.{ PreferencesChanged, PreferencesChangedRef, Result }
+import uk.gov.hmrc.preferenceschangednotifier.model.{ EntityId, PreferencesChanged, PreferencesChangedRef, Result }
 
 import java.time.Instant
 import java.util.UUID
@@ -101,8 +101,8 @@ class PublishSubscribersServiceSpec extends AnyFreeSpec with ScalaFutures with B
       when(publisher.execute(any, any))
         .thenReturn(Future.successful(Right(Result("Result1"))))
 
-      val result = svc.execute().futureValue
-      result.message contains "Result1"
+      svc.execute().futureValue
+
       verify(pcService, times(2)).pull(any) // 1. Workitem, 2. Stops stream
       verify(pcService).find(any)
       verify(publisher).execute(any, any)
@@ -126,8 +126,8 @@ class PublishSubscribersServiceSpec extends AnyFreeSpec with ScalaFutures with B
         .thenReturn(Future.successful(Right(Result("Result1"))))
         .thenReturn(Future.successful(Right(Result("Result2"))))
 
-      val result = svc.execute().futureValue
-      result.message contains "Result1"
+      svc.execute().futureValue
+
       verify(pcService, times(3)).pull(any) // 1. Workitem1, 2. Workitem2, 3. Stops stream
       verify(pcService, times(2)).find(any)
       verify(publisher, times(2)).execute(any, any)
@@ -137,7 +137,7 @@ class PublishSubscribersServiceSpec extends AnyFreeSpec with ScalaFutures with B
   private def create(subscriber: String) = {
     val preferencesChanged = PreferencesChanged(
       _id = new ObjectId(),
-      entityId = UUID.randomUUID().toString,
+      entityId = EntityId.generate(),
       changedValue = Paper,
       preferenceId = new ObjectId(),
       updatedAt = Instant.now(),

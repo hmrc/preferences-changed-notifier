@@ -30,10 +30,10 @@ class PreferencesChangedRefSpec extends AnyFreeSpec {
 
     "preferencesChangedId ObjectId writes correctly" in {
       val preferenceChangedId = new ObjectId()
-      val entityId = UUID.randomUUID().toString
+      val entityId = EntityId.generate()
       val a = PreferencesChangedRef(preferenceChangedId, new ObjectId(), entityId, "sub1")
 
-      val writer = PreferencesChangedRef.writes
+      val writer = PreferencesChangedRef.given_OFormat_PreferencesChangedRef
       val json = writer.writes(a)
 
       val result = (json \ "preferenceChangedId" \ "$oid").as[String]
@@ -42,11 +42,11 @@ class PreferencesChangedRefSpec extends AnyFreeSpec {
 
     "preferencesId ObjectId writes correctly" in {
       val preferenceId = new ObjectId()
-      val entityId = UUID.randomUUID().toString
+      val entityId = EntityId.generate()
       val a =
         PreferencesChangedRef(new ObjectId(), preferenceId, entityId, "sub1")
 
-      val writer = PreferencesChangedRef.writes
+      val writer = PreferencesChangedRef.given_OFormat_PreferencesChangedRef
       val json = writer.writes(a)
 
       val result = (json \ "preferenceId" \ "$oid").as[String]
@@ -54,12 +54,9 @@ class PreferencesChangedRefSpec extends AnyFreeSpec {
     }
 
     "subscriber string writes correctly" in {
-      val entityId = UUID.randomUUID().toString
-      val a =
-        PreferencesChangedRef(new ObjectId(), new ObjectId(), entityId, "sub1")
-
-      val writer = PreferencesChangedRef.writes
-      val json = writer.writes(a)
+      val entityId = EntityId.generate()
+      val a = PreferencesChangedRef(new ObjectId(), new ObjectId(), entityId, "sub1")
+      val json = Json.toJson(a)
 
       val result = (json \ "subscriber").as[String]
       result mustEqual "sub1"

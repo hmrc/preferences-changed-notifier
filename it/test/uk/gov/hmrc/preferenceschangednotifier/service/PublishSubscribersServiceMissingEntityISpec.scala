@@ -41,11 +41,10 @@ import uk.gov.hmrc.preferenceschangednotifier.WireMockUtil
 import uk.gov.hmrc.preferenceschangednotifier.config.PublishSubscribersServiceConfig
 import uk.gov.hmrc.preferenceschangednotifier.connectors.{ EpsHodsAdapterConnector, Subscriber, UpdatedPrintSuppressionsConnector }
 import uk.gov.hmrc.preferenceschangednotifier.model.MessageDeliveryFormat.Paper
-import uk.gov.hmrc.preferenceschangednotifier.model.{ PreferencesChanged, PreferencesChangedRef, Result }
+import uk.gov.hmrc.preferenceschangednotifier.model.{ EntityId, PreferencesChanged, PreferencesChangedRef }
 import uk.gov.hmrc.preferenceschangednotifier.repository.{ PreferencesChangedRepository, PreferencesChangedWorkItemRepository }
 
 import java.time.Instant
-import java.util.UUID
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -63,10 +62,8 @@ class PublishSubscribersServiceMissingEntityISpec
 
       val docCount = pcwiRepo.collection.countDocuments().toFuture().futureValue
 
-      val result: Result = service.execute().futureValue
+      val _ = service.execute().futureValue
       docCount must be(1)
-
-      result.message must be("")
     }
 
     "process the second item correctly" in new TestSetup {
@@ -86,12 +83,8 @@ class PublishSubscribersServiceMissingEntityISpec
       // there are now 2 workitems and a single valid PC document
       val docCount = pcwiRepo.collection.countDocuments().toFuture().futureValue
 
-      val result: Result = service.execute().futureValue
+      val _ = service.execute().futureValue
       docCount must be(2)
-
-      result.message must include(
-        s"Completed & deleted workitem: ${workitem.id.toString} successfully: HttpResponse status=200"
-      )
     }
   }
 
@@ -120,8 +113,6 @@ class PublishSubscribersServiceMissingEntityISpec
 
     implicit lazy val system: ActorSystem = ActorSystem()
     implicit lazy val materializer: Materializer = Materializer(system)
-
-//    implicit def ec: ExecutionContext = global
 
     val publisher = app.injector.instanceOf[PublishSubscribersPublisher]
     val auditConnector = app.injector.instanceOf[AuditConnector]
@@ -154,7 +145,7 @@ class PublishSubscribersServiceMissingEntityISpec
 
     // push an item into the pc repo
     val prefId = new ObjectId()
-    val entityId = UUID.randomUUID().toString
+    val entityId = EntityId.generate()
 
     val pc = PreferencesChanged(
       _id = new ObjectId(),
