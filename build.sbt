@@ -3,7 +3,7 @@ import uk.gov.hmrc.DefaultBuildSettings.*
 val appName: String = "preferences-changed-notifier"
 
 ThisBuild / majorVersion := 1
-ThisBuild / scalaVersion := "3.3.4"
+ThisBuild / scalaVersion := "3.3.6"
 
 lazy val microservice = Project("preferences-changed-notifier", file("."))
   .enablePlugins(play.sbt.PlayScala, SbtDistributablesPlugin)
@@ -22,7 +22,7 @@ lazy val microservice = Project("preferences-changed-notifier", file("."))
       "-Wconf:src=routes/.*:s"
     )
   )
-  .settings(CodeCoverageSettings.settings: _*)
+  .settings(CodeCoverageSettings.settings *)
 
 lazy val it = Project(id = "it", base = file("it"))
   .enablePlugins(PlayScala, ScalafmtPlugin)
