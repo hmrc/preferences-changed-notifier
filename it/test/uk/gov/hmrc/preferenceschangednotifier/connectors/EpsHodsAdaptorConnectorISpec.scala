@@ -82,6 +82,12 @@ class EpsHodsAdaptorConnectorISpec
       val result = connector.notifySubscriber(req).futureValue
       result.left.value.statusCode must be(NOT_FOUND)
     }
+
+    "return false when nino not available in the taxIds map" in new TestSetup {
+      connector.taxIdsValid(Map.empty) must be(false)
+      connector.taxIdsValid(Map("saUtr" -> "")) must be(false)
+      connector.taxIdsValid(Map("nino" -> "")) must be(false)
+    }
   }
 
   trait TestSetup {
