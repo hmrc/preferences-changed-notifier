@@ -40,8 +40,24 @@ class EpsHodsAdaptorConnectorISpec
     with BeforeAndAfterEach with EitherValues {
 
   "Connector..." must {
-    "return ok when stub returns OK" in new TestSetup {
+    "return ok when stub returns OK - nino only taxIds" in new TestSetup {
       val req = new NotifySubscriberRequest(Paper, Instant.now(), taxIds = Map("nino" -> "AB112233C"), false)
+
+      wireMockServer.addStubMapping(
+        post(urlEqualTo("/eps-hods-adapter/preferences/notify-subscriber"))
+          .willReturn(
+            aResponse()
+              .withStatus(Status.OK)
+          )
+          .build()
+      )
+
+      private val result = connector.notifySubscriber(req).futureValue
+      result.foreach(r => r.status must be(OK))
+    }
+
+    "return ok when stub returns OK - saUtr only taxIds" in new TestSetup {
+      val req = new NotifySubscriberRequest(Paper, Instant.now(), taxIds = Map("saUtr" -> "1211223301"), false)
 
       wireMockServer.addStubMapping(
         post(urlEqualTo("/eps-hods-adapter/preferences/notify-subscriber"))
