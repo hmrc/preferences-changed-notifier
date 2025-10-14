@@ -21,9 +21,9 @@ import play.api.libs.json.{ Format, Json, OFormat, OWrites, Reads, Writes }
 import uk.gov.hmrc.mongo.play.json.formats.MongoFormats
 
 case class PreferencesChangedRef(
-  preferenceChangedId: ObjectId, // reference to preferenceChanged._id
+  preferenceChangedId: ObjectId,
   preferenceId: ObjectId,
-  entityId: EntityId, // INDEX
+  entityId: Option[EntityId], // Temporarily optional to fix json validation error
   subscriber: String
 )
 

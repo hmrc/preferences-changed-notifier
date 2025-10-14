@@ -260,7 +260,7 @@ class PublishSubscribersServiceISpec
       PreferencesChangedRef(
         preferenceChangedId = preferenceChangedId,
         preferenceId = preferenceId,
-        entityId = entityId,
+        entityId = Option(entityId),
         subscriber = subscriber
       )
 

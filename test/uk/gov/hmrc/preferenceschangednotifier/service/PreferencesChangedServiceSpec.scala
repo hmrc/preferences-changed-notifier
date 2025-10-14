@@ -121,7 +121,7 @@ class PreferencesChangedServiceSpec extends AnyFreeSpec with ScalaFutures with B
         .thenReturn(Future.successful(pc2))
 
       val pcr1 =
-        PreferencesChangedRef(pc1._id, pc1.preferenceId, entityId, "EpsHodsAdapter")
+        PreferencesChangedRef(pc1._id, pc1.preferenceId, Some(entityId), "EpsHodsAdapter")
       when(workItemRepo.pushUpdated(any[PreferencesChangedRef]))
         .thenReturn(
           Future.successful(
@@ -184,7 +184,7 @@ class PreferencesChangedServiceSpec extends AnyFreeSpec with ScalaFutures with B
       )
 
       val pcref =
-        PreferencesChangedRef(pc._id, pc.preferenceId, entityId, "EpsHodsAdapter")
+        PreferencesChangedRef(pc._id, pc.preferenceId, Some(entityId), "EpsHodsAdapter")
       when(workItemRepo.pushUpdated(any[PreferencesChangedRef]))
         .thenReturn(
           Future.successful(
