@@ -128,7 +128,7 @@ class PreferencesChangedService @Inject() (
             subs.map { s =>
               pcWorkItemRepo
                 .pushUpdated(
-                  PreferencesChangedRef(pcId, pId, Option(entityId), s.name)
+                  PreferencesChangedRef(pcId, pId, Option(entityId.value), s.name)
                 )
                 .map(_ => Right(()))
                 .recover { ex =>

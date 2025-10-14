@@ -47,9 +47,7 @@ class PreferencesChangedWorkItemRepository @Inject() (
       mongoComponent = mongoComponent,
       itemFormat = PreferencesChangedRef.given_OFormat_PreferencesChangedRef,
       workItemFields = WorkItemFields.default,
-      extraCodecs = Seq(
-        Codecs.playFormatCodec(EntityId.given_Format_EntityId)
-      ),
+      extraCodecs = Seq.empty,
       extraIndexes = Seq(
         IndexModel(
           ascending("item.entityId"),
@@ -83,7 +81,7 @@ class PreferencesChangedWorkItemRepository @Inject() (
     collection
       .findOneAndUpdate(
         filter = workItemFilter(preferencesChanged),
-        update = update(),
+        update = updatedAt(),
         options = FindOneAndUpdateOptions()
           .upsert(false)
           .returnDocument(ReturnDocument.AFTER)
@@ -94,12 +92,12 @@ class PreferencesChangedWorkItemRepository @Inject() (
         case None     => pushNew(preferencesChanged)
       }
 
-  private def update() =
+  private def updatedAt() =
     Updates.set("updatedAt", now())
 
   private def workItemFilter(preferencesChangedRef: PreferencesChangedRef) =
     Filters.and(
-      Filters.eq("item.entityId", preferencesChangedRef.entityId),
+      Filters.eq("item.entityId", preferencesChangedRef.entityId.getOrElse("Unknown")),
       Filters.eq("item.subscriber", preferencesChangedRef.subscriber),
       Filters.eq("status", ProcessingStatus.ToDo.name)
     )

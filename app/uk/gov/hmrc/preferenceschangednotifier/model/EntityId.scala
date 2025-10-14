@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.preferenceschangednotifier.model
 
-import play.api.libs.json.{ Format, JsError, JsResult, JsString, JsSuccess, JsValue, Reads, Writes }
+import play.api.libs.json.*
 
 import java.util.UUID
 
@@ -34,9 +34,9 @@ object EntityId {
     }
   }
 
-  val write = new Writes[EntityId] {
+  val writes: Writes[EntityId] = new Writes[EntityId] {
     override def writes(e: EntityId): JsValue = JsString(e.value)
   }
 
-  given Format[EntityId] = Format(reads, write)
+  given Format[EntityId] = Format(reads, writes)
 }

@@ -23,12 +23,11 @@ import uk.gov.hmrc.mongo.play.json.formats.MongoFormats
 case class PreferencesChangedRef(
   preferenceChangedId: ObjectId,
   preferenceId: ObjectId,
-  entityId: Option[EntityId], // Temporarily optional to fix json validation error
+  entityId: Option[String], // Temporarily optional string to fix json validation error
   subscriber: String
 )
 
 object PreferencesChangedRef {
   given Format[ObjectId] = MongoFormats.objectIdFormat
-  import EntityId.given_Format_EntityId
   given OFormat[PreferencesChangedRef] = Json.format[PreferencesChangedRef]
 }
