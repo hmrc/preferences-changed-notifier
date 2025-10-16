@@ -82,7 +82,7 @@ class PreferencesChangedWorkItemRepositorySpec
       val a = PreferencesChangedRef(changedId, new ObjectId(), Some(entityId.value), "https://localhost:1234")
       val result = preferencesChangedWorkItemRepository.pushUpdated(a).futureValue
       result.item.preferenceChangedId mustEqual changedId
-      result.item.entityId.get mustEqual entityId.toString
+      result.item.entityId.get mustEqual entityId.value
     }
 
     "pull workitem" in {

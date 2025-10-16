@@ -32,6 +32,7 @@ import org.mongodb.scala.bson.codecs.Macros
 import org.mongodb.scala.bson.codecs.Macros.createCodecProvider
 import play.api.libs.json.{ Format, OFormat }
 import EntityId.*
+import org.mongodb.scala.bson.conversions.Bson
 import uk.gov.hmrc.mongo.play.json.Codecs
 
 /** A work item represents an item in a queue which will represent a preferenceId and a subscriber. There will be
@@ -95,10 +96,15 @@ class PreferencesChangedWorkItemRepository @Inject() (
   private def updatedAt() =
     Updates.set("updatedAt", now())
 
-  private def workItemFilter(preferencesChangedRef: PreferencesChangedRef) =
+  private def workItemFilter(preferencesChangedRef: PreferencesChangedRef) = {
+    val entityIdFilter: Bson =
+      if (preferencesChangedRef.entityId.isDefined)
+        Filters.eq("item.entityId", preferencesChangedRef.entityId.get)
+      else Filters.empty()
     Filters.and(
-      Filters.eq("item.entityId", preferencesChangedRef.entityId.getOrElse("Unknown")),
+      entityIdFilter,
       Filters.eq("item.subscriber", preferencesChangedRef.subscriber),
       Filters.eq("status", ProcessingStatus.ToDo.name)
     )
+  }
 }

@@ -122,7 +122,7 @@ class PreferencesChangedSpec extends AnyFreeSpec {
       val req = PreferencesChangedRequest(
         changedValue = Paper,
         preferenceId = pid.toString,
-        entityId = entityId.toString,
+        entityId = entityId.value,
         updatedAt = Instant.now(),
         taxIds = Map.empty,
         true
@@ -135,7 +135,7 @@ class PreferencesChangedSpec extends AnyFreeSpec {
       val req = PreferencesChangedRequest(
         changedValue = Paper,
         preferenceId = "111",
-        entityId = entityId.toString,
+        entityId = entityId.value,
         updatedAt = Instant.now(),
         taxIds = Map.empty,
         false
@@ -150,7 +150,7 @@ class PreferencesChangedSpec extends AnyFreeSpec {
       val req = PreferencesChangedRequest(
         changedValue = Paper,
         preferenceId = new ObjectId().toString,
-        entityId = entityId.toString,
+        entityId = entityId.value,
         updatedAt = Instant.now(),
         taxIds = Map("taxId1" -> "1234"),
         true
