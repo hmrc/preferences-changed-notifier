@@ -125,7 +125,7 @@ class PublishSubscribersService @Inject() (
       .watchTermination() { (_, done) =>
         done.onComplete {
           case Success(_)  => logger.debug(s"Workload stream terminated")
-          case Failure(ex) => logger.error(s"Workload stream terminated with error: $ex")
+          case Failure(ex) => logger.error(s"Workload stream terminated with error: ${ex.getMessage}")
         }
         done
       }
@@ -133,7 +133,7 @@ class PublishSubscribersService @Inject() (
       .run()
       .map(_ => ())
       .recover { case ex =>
-        logger.error(s"Recovery error $ex")
+        logger.error(s"Recovery error ${ex.getMessage}")
         Future.unit
       }
 

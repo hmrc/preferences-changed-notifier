@@ -21,14 +21,13 @@ import play.api.libs.json.{ Format, Json, OFormat, OWrites, Reads, Writes }
 import uk.gov.hmrc.mongo.play.json.formats.MongoFormats
 
 case class PreferencesChangedRef(
-  preferenceChangedId: ObjectId, // reference to preferenceChanged._id
+  preferenceChangedId: ObjectId,
   preferenceId: ObjectId,
-  entityId: EntityId, // INDEX
+  entityId: Option[String], // Temporarily optional string to fix json validation error
   subscriber: String
 )
 
 object PreferencesChangedRef {
   given Format[ObjectId] = MongoFormats.objectIdFormat
-  import EntityId.given_Format_EntityId
   given OFormat[PreferencesChangedRef] = Json.format[PreferencesChangedRef]
 }

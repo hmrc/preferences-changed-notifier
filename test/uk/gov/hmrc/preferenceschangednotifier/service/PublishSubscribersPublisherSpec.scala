@@ -66,7 +66,7 @@ class PublishSubscribersPublisherSpec
     val workItemId = new ObjectId()
     val entityId = EntityId.generate()
 
-    val pcr1 = PreferencesChangedRef(preferenceChangedId, preferenceId, entityId, "EpsHodsAdapter")
+    val pcr1 = PreferencesChangedRef(preferenceChangedId, preferenceId, Some(entityId.value), "EpsHodsAdapter")
     WorkItem(
       item = pcr1,
       id = workItemId,

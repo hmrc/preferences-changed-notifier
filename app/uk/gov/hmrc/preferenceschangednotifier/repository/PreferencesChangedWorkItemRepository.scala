@@ -32,6 +32,7 @@ import org.mongodb.scala.bson.codecs.Macros
 import org.mongodb.scala.bson.codecs.Macros.createCodecProvider
 import play.api.libs.json.{ Format, OFormat }
 import EntityId.*
+import org.mongodb.scala.bson.conversions.Bson
 import uk.gov.hmrc.mongo.play.json.Codecs
 
 /** A work item represents an item in a queue which will represent a preferenceId and a subscriber. There will be
@@ -47,9 +48,7 @@ class PreferencesChangedWorkItemRepository @Inject() (
       mongoComponent = mongoComponent,
       itemFormat = PreferencesChangedRef.given_OFormat_PreferencesChangedRef,
       workItemFields = WorkItemFields.default,
-      extraCodecs = Seq(
-        Codecs.playFormatCodec(EntityId.given_Format_EntityId)
-      ),
+      extraCodecs = Seq.empty,
       extraIndexes = Seq(
         IndexModel(
           ascending("item.entityId"),
@@ -83,7 +82,7 @@ class PreferencesChangedWorkItemRepository @Inject() (
     collection
       .findOneAndUpdate(
         filter = workItemFilter(preferencesChanged),
-        update = update(),
+        update = updatedAt(),
         options = FindOneAndUpdateOptions()
           .upsert(false)
           .returnDocument(ReturnDocument.AFTER)
@@ -94,13 +93,18 @@ class PreferencesChangedWorkItemRepository @Inject() (
         case None     => pushNew(preferencesChanged)
       }
 
-  private def update() =
+  private def updatedAt() =
     Updates.set("updatedAt", now())
 
-  private def workItemFilter(preferencesChangedRef: PreferencesChangedRef) =
+  private def workItemFilter(preferencesChangedRef: PreferencesChangedRef) = {
+    val entityIdFilter: Bson =
+      if (preferencesChangedRef.entityId.isDefined)
+        Filters.eq("item.entityId", preferencesChangedRef.entityId.get)
+      else Filters.empty()
     Filters.and(
-      Filters.eq("item.entityId", preferencesChangedRef.entityId),
+      entityIdFilter,
       Filters.eq("item.subscriber", preferencesChangedRef.subscriber),
       Filters.eq("status", ProcessingStatus.ToDo.name)
     )
+  }
 }
