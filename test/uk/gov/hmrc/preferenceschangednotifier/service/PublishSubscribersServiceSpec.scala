@@ -134,7 +134,7 @@ class PublishSubscribersServiceSpec extends AnyFreeSpec with ScalaFutures with B
       verify(publisher, times(2)).execute(any, any)
     }
 
-    "test execute stream with one workItem having no preferencesChanged item found" in {
+    "test execute stream with one workItem having no preferencesChanged item" in {
       val (preferencesChanged, workItem) = create(EPS_HODS_ADAPTER)
 
       when(pcService.pull(any))
