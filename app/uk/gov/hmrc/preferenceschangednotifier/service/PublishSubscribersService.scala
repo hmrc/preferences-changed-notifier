@@ -27,6 +27,7 @@ import play.api.inject.ApplicationLifecycle
 import play.api.{ Configuration, Logging }
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.mongo.lock.{ LockRepository, LockService }
+import uk.gov.hmrc.mongo.workitem.ProcessingStatus.PermanentlyFailed
 import uk.gov.hmrc.mongo.workitem.WorkItem
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.preferenceschangednotifier.config.PublishSubscribersServiceConfig
@@ -153,6 +154,7 @@ class PublishSubscribersService @Inject() (
           case Left(msg) =>
             logger.error(s"Failed to find preferencesChanged document for workItem id:${workItem.id} msg: $msg")
             audit(workItem, msg)
+            service.completeWithStatus(workItem, PermanentlyFailed)
             Future.unit
         }
     }.getOrElse(Future.unit)

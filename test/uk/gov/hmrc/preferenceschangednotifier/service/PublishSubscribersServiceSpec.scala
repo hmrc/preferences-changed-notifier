@@ -19,6 +19,7 @@ package uk.gov.hmrc.preferenceschangednotifier.service
 import org.apache.pekko.actor.ActorSystem
 import org.bson.codecs.ObjectIdGenerator
 import org.mockito.ArgumentMatchers
+import org.mockito.ArgumentMatchers.{ eq => meq }
 import org.mockito.ArgumentMatchers.{ any, contains }
 import org.mockito.Mockito.{ reset, times, verify, verifyNoInteractions, verifyNoMoreInteractions, when }
 import org.mongodb.scala.bson.ObjectId
@@ -32,7 +33,7 @@ import play.api.Configuration
 import play.api.inject.ApplicationLifecycle
 import uk.gov.hmrc.domain.Generator
 import uk.gov.hmrc.mongo.lock.LockRepository
-import uk.gov.hmrc.mongo.workitem.ProcessingStatus.{ InProgress, ToDo }
+import uk.gov.hmrc.mongo.workitem.ProcessingStatus.{ InProgress, PermanentlyFailed, ToDo }
 import uk.gov.hmrc.mongo.workitem.WorkItem
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.preferenceschangednotifier.config.PublishSubscribersServiceConfig
@@ -131,6 +132,23 @@ class PublishSubscribersServiceSpec extends AnyFreeSpec with ScalaFutures with B
       verify(pcService, times(3)).pull(any) // 1. Workitem1, 2. Workitem2, 3. Stops stream
       verify(pcService, times(2)).find(any)
       verify(publisher, times(2)).execute(any, any)
+    }
+
+    "test execute stream with one workItem having no preferencesChanged item" in {
+      val (preferencesChanged, workItem) = create(EPS_HODS_ADAPTER)
+
+      when(pcService.pull(any))
+        .thenReturn(Future.successful(Some(workItem)))
+        .thenReturn(Future.successful(None)) // Stops the stream
+
+      when(pcService.find(ArgumentMatchers.eq(workItem.item.preferenceChangedId)))
+        .thenReturn(Future.successful(Left(s"_id ${workItem.item.preferenceChangedId} not found")))
+
+      svc.execute().futureValue
+
+      verify(pcService).find(any)
+      verify(pcService).completeWithStatus(meq(workItem), meq(PermanentlyFailed))
+      verifyNoInteractions(publisher)
     }
   }
 
