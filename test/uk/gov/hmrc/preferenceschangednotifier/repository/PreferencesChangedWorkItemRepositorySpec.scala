@@ -33,6 +33,7 @@ import uk.gov.hmrc.preferenceschangednotifier.model.{ EntityId, PreferencesChang
 
 import java.time.Instant
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 import scala.concurrent.ExecutionContext
 
 class PreferencesChangedWorkItemRepositorySpec
@@ -43,21 +44,23 @@ class PreferencesChangedWorkItemRepositorySpec
   implicit val executionContext: ExecutionContext =
     Helpers.stubControllerComponents().executionContext
 
-  val config: Configuration = Configuration(data = ("preferencesChangedWorkItems.retryInProgressAfter", 60000))
+  val config: Configuration = Configuration.from(
+    Map("preferencesChangedWorkItems.retryInProgressAfter" -> 60000, "preferencesChangedWorkItems.ttl" -> 1)
+  )
 
   val preferencesChangedWorkItemRepository =
     new PreferencesChangedWorkItemRepository(mongoComponent, config)
 
   override val repository: PlayMongoRepository[WorkItem[PreferencesChangedRef]] = preferencesChangedWorkItemRepository
 
-  override protected def checkTtlIndex: Boolean = false
+  override protected def checkTtlIndex: Boolean = true
 
   override def beforeEach(): Unit = {
     preferencesChangedWorkItemRepository.collection.deleteMany(Filters.empty()).toFuture().futureValue
     super.beforeEach()
   }
 
-  "Preferences changed repository" - {
+  "Preferences changed work item repository" - {
     val entityId = EntityId.generate()
 
     "test indexes" in {
@@ -75,6 +78,10 @@ class PreferencesChangedWorkItemRepositorySpec
       maybeSubscriberIndexModel.get.getOptions.isUnique must be(false)
       maybeSubscriberIndexModel.get.getOptions.isBackground must be(true)
 
+      val maybeUpdatedAtIndexModel =
+        indexes.filter(i => i.getKeys.toBsonDocument.get("updatedAt") != null)
+
+      maybeUpdatedAtIndexModel.find(_.getOptions.getExpireAfter(TimeUnit.DAYS) == 1).size must be(1)
     }
 
     "pushes new workitem correctly" in {
