@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.preferenceschangednotifier.repository
 
-import org.mongodb.scala.model.{ Filters, FindOneAndUpdateOptions, IndexModel, IndexOptions, ReturnDocument, Updates }
+import org.mongodb.scala.model.{ Filters, FindOneAndUpdateOptions, IndexModel, IndexOptions, Indexes, ReturnDocument, Updates }
 import org.mongodb.scala.model.Indexes.ascending
 import org.mongodb.scala.SingleObservableFuture
 import play.api.Configuration
@@ -34,6 +34,8 @@ import play.api.libs.json.{ Format, OFormat }
 import EntityId.*
 import org.mongodb.scala.bson.conversions.Bson
 import uk.gov.hmrc.mongo.play.json.Codecs
+
+import java.util.concurrent.TimeUnit
 
 /** A work item represents an item in a queue which will represent a preferenceId and a subscriber. There will be
   * duplicates, and that is ok, typically when one is already in progress or completed.
@@ -61,6 +63,13 @@ class PreferencesChangedWorkItemRepository @Inject() (
         IndexModel(
           ascending("item.subscriber"),
           IndexOptions().unique(false).background(true)
+        ),
+        IndexModel(
+          Indexes.ascending("updatedAt"),
+          IndexOptions()
+            .unique(false)
+            .background(true)
+            .expireAfter(configuration.get[Long]("preferencesChangedWorkItems.ttl"), TimeUnit.DAYS)
         )
       ),
       replaceIndexes = false
