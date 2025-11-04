@@ -92,7 +92,7 @@ class PublishSubscribersServiceMissingEntityISpec
     PreferencesChangedRef(
       preferenceChangedId = pcDocument._id,
       preferenceId = pcDocument.preferenceId,
-      entityId = Option(pcDocument.entityId.value),
+      entityId = pcDocument.entityId,
       subscriber = "EpsHodsAdapter"
     )
 

@@ -74,7 +74,7 @@ class PreferencesChangedRepository @Inject() (mongo: MongoComponent, config: Con
       )
       .toFuture()
       .recover { ex =>
-        logger.error(s"Recover during upsert: $ex")
+        logger.error(s"Recover during upsert: ${ex.getMessage}")
         throw ex
       }
 

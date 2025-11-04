@@ -166,7 +166,7 @@ class PublishSubscribersServiceSpec extends AnyFreeSpec with ScalaFutures with B
     val pcRef = PreferencesChangedRef(
       preferencesChanged._id,
       preferencesChanged.preferenceId,
-      Some(preferencesChanged.entityId.value),
+      preferencesChanged.entityId,
       subscriber
     )
 

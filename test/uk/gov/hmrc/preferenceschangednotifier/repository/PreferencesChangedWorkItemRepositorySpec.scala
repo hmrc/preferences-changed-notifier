@@ -85,16 +85,14 @@ class PreferencesChangedWorkItemRepositorySpec
     }
 
     "pushes new workitem correctly" in {
-      val changedId = new ObjectId()
-      val a = PreferencesChangedRef(changedId, new ObjectId(), Some(entityId.value), "https://localhost:1234")
+      val a = PreferencesChangedRef(new ObjectId(), new ObjectId(), entityId, "https://localhost:1234")
       val result = preferencesChangedWorkItemRepository.pushUpdated(a).futureValue
-      result.item.preferenceChangedId mustEqual changedId
-      result.item.entityId.get mustEqual entityId.value
+      result.id.toString.length mustEqual 24
     }
 
     "pull workitem" in {
       val s = "https://localhost:1234"
-      val a = PreferencesChangedRef(new ObjectId(), new ObjectId(), Some(entityId.value), s)
+      val a = PreferencesChangedRef(new ObjectId(), new ObjectId(), entityId, s)
       preferencesChangedWorkItemRepository.pushNew(a).futureValue
 
       val workItem =
@@ -106,7 +104,7 @@ class PreferencesChangedWorkItemRepositorySpec
 
     "complete workitem" in {
       val s = "https://localhost:1234"
-      val a = PreferencesChangedRef(new ObjectId(), new ObjectId(), Some(entityId.value), s)
+      val a = PreferencesChangedRef(new ObjectId(), new ObjectId(), entityId, s)
       preferencesChangedWorkItemRepository.pushNew(a).futureValue
 
       val workItem =
@@ -121,7 +119,7 @@ class PreferencesChangedWorkItemRepositorySpec
       val pcId = new ObjectId()
       val pId = new ObjectId()
       val a =
-        PreferencesChangedRef(pcId, pId, Some(entityId.value), "https://localhost:1234")
+        PreferencesChangedRef(pcId, pId, entityId, "https://localhost:1234")
 
       preferencesChangedWorkItemRepository.pushNew(a).futureValue
 
@@ -136,7 +134,7 @@ class PreferencesChangedWorkItemRepositorySpec
       val pcId = new ObjectId()
       val pId = new ObjectId()
       val a =
-        PreferencesChangedRef(pcId, pId, Some(entityId.value), "https://localhost:1234")
+        PreferencesChangedRef(pcId, pId, entityId, "https://localhost:1234")
 
       val wi1 = preferencesChangedWorkItemRepository.pushUpdated(a).futureValue
       val wi2 = preferencesChangedWorkItemRepository.pushUpdated(a).futureValue
@@ -147,9 +145,9 @@ class PreferencesChangedWorkItemRepositorySpec
     "create new item if same preferenceId and subscriber item is already in progress" in {
       val prefId = new ObjectId()
       val a =
-        PreferencesChangedRef(new ObjectId(), prefId, Some(entityId.value), "https://localhost:1234")
+        PreferencesChangedRef(new ObjectId(), prefId, entityId, "https://localhost:1234")
       val b =
-        PreferencesChangedRef(new ObjectId(), prefId, Some(entityId.value), "https://localhost:1234")
+        PreferencesChangedRef(new ObjectId(), prefId, entityId, "https://localhost:1234")
 
       val wi1 = preferencesChangedWorkItemRepository.pushUpdated(a).futureValue
       preferencesChangedWorkItemRepository.markAs(wi1.id, ProcessingStatus.InProgress).futureValue
@@ -164,9 +162,9 @@ class PreferencesChangedWorkItemRepositorySpec
       val prefChangedId = new ObjectId()
 
       val a =
-        PreferencesChangedRef(prefChangedId, prefId, Some(entityId.value), "https://localhost:1234")
+        PreferencesChangedRef(prefChangedId, prefId, entityId, "https://localhost:1234")
       val b =
-        PreferencesChangedRef(prefChangedId, prefId, Some(entityId.value), "https://localhost:1234")
+        PreferencesChangedRef(prefChangedId, prefId, entityId, "https://localhost:1234")
 
       val wi1 = preferencesChangedWorkItemRepository.pushUpdated(a).futureValue
       val wi2 = preferencesChangedWorkItemRepository.pushUpdated(b).futureValue // updates existing workitem

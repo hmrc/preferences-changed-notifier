@@ -32,7 +32,6 @@ import org.mongodb.scala.bson.codecs.Macros
 import org.mongodb.scala.bson.codecs.Macros.createCodecProvider
 import play.api.libs.json.{ Format, OFormat }
 import EntityId.*
-import org.mongodb.scala.bson.conversions.Bson
 import uk.gov.hmrc.mongo.play.json.Codecs
 
 import java.util.concurrent.TimeUnit
@@ -50,7 +49,9 @@ class PreferencesChangedWorkItemRepository @Inject() (
       mongoComponent = mongoComponent,
       itemFormat = PreferencesChangedRef.given_OFormat_PreferencesChangedRef,
       workItemFields = WorkItemFields.default,
-      extraCodecs = Seq.empty,
+      extraCodecs = Seq(
+        Codecs.playFormatCodec(EntityId.given_Format_EntityId)
+      ),
       extraIndexes = Seq(
         IndexModel(
           ascending("item.entityId"),
@@ -105,15 +106,10 @@ class PreferencesChangedWorkItemRepository @Inject() (
   private def updatedAt() =
     Updates.set("updatedAt", now())
 
-  private def workItemFilter(preferencesChangedRef: PreferencesChangedRef) = {
-    val entityIdFilter: Bson =
-      if (preferencesChangedRef.entityId.isDefined)
-        Filters.eq("item.entityId", preferencesChangedRef.entityId.get)
-      else Filters.empty()
+  private def workItemFilter(preferencesChangedRef: PreferencesChangedRef) =
     Filters.and(
-      entityIdFilter,
+      Filters.eq("item.entityId", preferencesChangedRef.entityId),
       Filters.eq("item.subscriber", preferencesChangedRef.subscriber),
       Filters.eq("status", ProcessingStatus.ToDo.name)
     )
-  }
 }
