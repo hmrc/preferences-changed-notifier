@@ -138,7 +138,7 @@ class PreferencesChangedControllerISpec
       wiRepoCount must be(1)
 
       val workItem = wiRepo.collection.find().first().toFuture().futureValue
-      workItem.item.entityId.get must be(entityId.value)
+      workItem.item.entityId must be(entityId)
       workItem.item.subscriber must be("EpsHodsAdapter")
     }
 
@@ -165,7 +165,7 @@ class PreferencesChangedControllerISpec
       wiRepoCount must be(1)
 
       val workItem = wiRepo.collection.find().first().toFuture().futureValue
-      workItem.item.entityId.get must be(entityId.value)
+      workItem.item.entityId must be(entityId)
       workItem.item.subscriber must be("UpdatedPrintSuppressions")
     }
 

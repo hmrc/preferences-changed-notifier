@@ -107,7 +107,7 @@ class PublishSubscribersService @Inject() (
           logger.debug("Lock held by another instance; skipping")
       }
       .recover { case ex =>
-        logger.error(s"Lock acquisition failed: $ex")
+        logger.error(s"Lock acquisition failed: ${ex.getMessage}")
       }
 
   // Batch processing, streams one workitem at a time

@@ -65,7 +65,7 @@ class PreferencesChangedService @Inject() (
         Instant.now()
       )
       .recoverWith { case ex =>
-        logger.error(s"Failed to pull outstanding workItems: $ex")
+        logger.error(s"Failed to pull outstanding workItems: ${ex.getMessage}")
         throw ex
       }
 
@@ -105,7 +105,7 @@ class PreferencesChangedService @Inject() (
         Right(doc._id)
       }
       .recover { ex =>
-        logger.error(s"Recover during addPreferenceChanged $ex")
+        logger.error(s"Recover during addPreferenceChanged ${ex.getMessage}")
         Left(PersistenceError(ex.toString))
       }
 
@@ -128,7 +128,7 @@ class PreferencesChangedService @Inject() (
             subs.map { s =>
               pcWorkItemRepo
                 .pushUpdated(
-                  PreferencesChangedRef(pcId, pId, Option(entityId.value), s.name)
+                  PreferencesChangedRef(pcId, pId, entityId, s.name)
                 )
                 .map(_ => Right(()))
                 .recover { ex =>
