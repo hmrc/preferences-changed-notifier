@@ -31,7 +31,6 @@ import org.scalatest.time.{ Seconds, Span }
 import org.scalatestplus.mockito.MockitoSugar.mock
 import play.api.Configuration
 import play.api.inject.ApplicationLifecycle
-import uk.gov.hmrc.domain.Generator
 import uk.gov.hmrc.mongo.lock.LockRepository
 import uk.gov.hmrc.mongo.workitem.ProcessingStatus.{ InProgress, PermanentlyFailed, ToDo }
 import uk.gov.hmrc.mongo.workitem.WorkItem
